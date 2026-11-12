@@ -39,7 +39,15 @@ function crearDbSupabase(sb,uid){
  return{
   doc:path=>({
    get:()=>leerDoc(path),
-   set:async data=>{const {error}=await tabla().upsert({path,parent:rutaPadre(path),empresa_id:rutaEmpresa(path),data,updated_at:new Date().toISOString(),updated_by:uid});if(error)throw sbErr(error)},
+   set:async data=>{const row={path,parent:rutaPadre(path),empresa_id:rutaEmpresa(path),data,updated_at:new Date().toISOString(),updated_by:uid};
+    // Se crea la fila y, si ya existía, se actualiza. No se usa upsert a propósito:
+    // PostgREST devuelve la fila guardada y, al aplicarle la política de lectura, rechaza
+    // el alta de una empresa nueva (todavía no hay membresía). Con insert + update no se
+    // pide esa lectura y el alta funciona.
+    const ins=await tabla().insert(row);
+    if(!ins.error)return;
+    if(ins.error.code==='23505'){const upd=await tabla().update(row).eq('path',path);if(upd.error)throw sbErr(upd.error);return}
+    throw sbErr(ins.error)},
    delete:async()=>{const {error}=await tabla().delete().eq('path',path);if(error)throw sbErr(error)},
    onSnapshot(next,err){let vivo=true;const cargar=()=>leerDoc(path).then(s=>{if(vivo)next(s)}).catch(e=>{if(vivo&&err)err(e)});cargar();const off=escuchar({campo:'path',valor:path},cargar);return()=>{vivo=false;off()}}
   }),

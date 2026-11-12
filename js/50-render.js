@@ -21,7 +21,9 @@ function render(){inval();const a=document.activeElement;const id=a&&a.id;let ss
  const V={resumen:vResumen,empresas:vEmpresas,usuarios:vUsuarios,plan:vPlan,diario:vDiario,mayor:vMayor,compras:()=>vLibro('compras'),ventas:()=>vLibro('ventas'),iva:vIva,banco:vBanco,balance:vBalance,eeff:vEeff,ctacte:vCtacte,renta:vRenta,cierre:vCierre,cartera:vCartera,honorarios:vHonorarios,activo:vActivo,trabajadores:vTrabajadores,remu:vRemu,calendario:vCalendario,historial:vHistorial}[S.view]||vResumen;
  if(!S.loaded.emps&&S.mode==='cargando'){$('#view').innerHTML=`<div class="sheet"><div class="empty">Cargando empresas…</div></div>`;return}
  NEED.clear();document.body.classList.toggle('ro',S.ro);
- $('#view').innerHTML=(S.ro?'<div class="note warn">Tienes acceso de solo lectura: puedes revisar libros y reportes y exportarlos, pero no registrar cambios. Pide al dueño acceso de Editor para registrar.</div>':'')+V();
+ $('#view').innerHTML=(S.ro?`<div class="note warn">${S.rol==='lector'
+   ?'Tu rol en esta empresa es <b>Lector</b>: puedes revisar los libros y exportarlos, pero no registrar cambios. El dueño te cambia a Editor en Administración → Usuarios.'
+   :'No tienes permiso para registrar cambios en esta empresa. Revisa tu rol en Administración → Usuarios; si deberías ser dueño, cierra sesión y entra con la cuenta que creó la empresa.'}</div>`:'')+V();
  if(S.ro)document.querySelectorAll('#view [data-save],#view [data-file],#view [data-f],#view [data-el],#view [data-ed],#view [data-imp]').forEach(el=>{el.disabled=true});
  if(NEED.size)resolverNombres();
  if(S.f.hon)updHon();

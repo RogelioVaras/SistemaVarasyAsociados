@@ -17,7 +17,11 @@ const canDl=()=>!!S.dl||STANDALONE;
 async function saveFile(name,data){if(S.dl){try{await S.dl.save({filename:name,data})}catch(e){if(e&&e.code!=='declined')toast('No se pudo generar la descarga.','err')}return}
  if(!STANDALONE){toast('La descarga no está disponible en esta vista.','err');return}
  const ext=name.split('.').pop();const blob=new Blob([data],{type:ext==='json'?'application/json':ext==='pdf'?'application/pdf':'text/csv;charset=utf-8'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},500)}
-function writeErr(e){if(e&&e.code==='invalid_argument'){S.ro=true;toast('Tienes acceso de solo lectura: no se guardó el cambio.','err')}else toast(errMsg(e),'err')}
+function writeErr(e){if(e&&e.code==='invalid_argument'){S.ro=true;toast('La base rechazó el cambio: quedaste en solo lectura.','err');
+ // El rechazo puede venir del rol o de un acceso mal configurado: se vuelve a preguntar a la base
+ // para que el aviso de la pantalla diga la razón real.
+ if(S.backend==='supabase'&&S.empId)cargarRoles().then(()=>{aplicarRol(S.empId);if(S.rol!=='lector')S.ro=true;render()}).catch(()=>{})}
+ else toast(errMsg(e),'err')}
 async function put(path,data){if(S.ro){toast('Tienes acceso de solo lectura.','err');throw new Error('ro')}localApply(path,data);if(!S.db){if(S.local)lsPut(path,data);return}try{await enqueue(path,()=>S.db.doc(path).set(data))}catch(e){writeErr(e);throw e}}
 async function del(path){if(S.ro){toast('Tienes acceso de solo lectura.','err');throw new Error('ro')}localApply(path,null);if(!S.db){if(S.local)lsPut(path,null);return}try{await enqueue(path,()=>S.db.doc(path).delete())}catch(e){writeErr(e);throw e}}
 const ep=rel=>`empresas/${S.empId}/${rel}`;
