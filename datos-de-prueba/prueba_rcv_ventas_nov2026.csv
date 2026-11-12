@@ -1,0 +1,5 @@
+Nro;Tipo Doc;Tipo Venta;Rut cliente;Razon Social;Folio;Fecha Docto;Fecha Recepcion;Fecha Acuse Recibo;Fecha Reclamo;Monto Exento;Monto Neto;Monto IVA;Monto total
+1;33;Del Giro;77111222-6;Restaurant El Roble Ltda;130;05/11/2026;;;;0;1310000;248900;1558900
+2;33;Del Giro;78222333-K;Cafetería Central SpA;131;18/11/2026;;;;0;850000;161500;1011500
+3;34;Del Giro;78222333-K;Cafetería Central SpA;15;19/11/2026;;;;90000;0;0;90000
+4;61;Del Giro;77111222-6;Restaurant El Roble Ltda;10;25/11/2026;;;;0;100000;19000;119000

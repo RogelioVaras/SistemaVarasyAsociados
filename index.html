@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Partida Doble</title>
+<meta name="description" content="Contabilidad multiempresa para Chile: libros, IVA y F29, remuneraciones, renta, conciliación bancaria y estados financieros.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+<div id="login" hidden></div>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><div class="brand-mark">D|H</div><div><b>Partida Doble</b><small>Contabilidad multiempresa</small></div></div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+  <div class="main">
+    <header class="top" id="top"></header>
+    <main id="view"></main>
+  </div>
+</div>
+<div id="toast" aria-live="polite"></div>
+<datalist id="dl-cuentas"></datalist>
+
+<!-- Configuración (Supabase). Si está vacía, la app guarda los datos en el navegador. -->
+<script src="js/config.js"></script>
+
+<!-- Núcleo -->
+<script src="js/01-constantes.js"></script>
+<script src="js/02-utilidades.js"></script>
+<script src="js/03-estado.js"></script>
+<script src="js/04-autoria.js"></script>
+<script src="js/05-persistencia.js"></script>
+<script src="js/06-supabase.js"></script>
+
+<!-- Lógica contable y tributaria -->
+<script src="js/10-contabilidad.js"></script>
+<script src="js/11-banco.js"></script>
+<script src="js/12-cuentas-corrientes.js"></script>
+<script src="js/13-renta-cierre.js"></script>
+<script src="js/14-validaciones-reglas.js"></script>
+<script src="js/15-honorarios.js"></script>
+<script src="js/16-activo-fijo.js"></script>
+<script src="js/17-remuneraciones.js"></script>
+<script src="js/18-reportes.js"></script>
+<script src="js/20-csv.js"></script>
+
+<!-- Pantallas -->
+<script src="js/30-vistas-generales.js"></script>
+<script src="js/31-vistas-libros.js"></script>
+<script src="js/32-vistas-iva.js"></script>
+<script src="js/33-vistas-banco.js"></script>
+<script src="js/34-vistas-reportes.js"></script>
+<script src="js/35-vistas-ctacte-renta-cierre.js"></script>
+<script src="js/36-vistas-cartera-calendario.js"></script>
+<script src="js/37-respaldos.js"></script>
+<script src="js/38-vistas-varias.js"></script>
+<script src="js/39-vistas-personal.js"></script>
+<script src="js/40-pdf.js"></script>
+
+<!-- Interfaz y arranque -->
+<script src="js/50-render.js"></script>
+<script src="js/51-acciones.js"></script>
+<script src="js/52-exportar.js"></script>
+<script src="js/53-eventos.js"></script>
+<script src="js/60-arranque.js"></script>
+</body>
+</html>
