@@ -1,0 +1,39 @@
+/* Partida Doble · Vista: conciliación bancaria. */
+function vBanco(){const e=emp();if(!e)return head('Conciliación bancaria','')+noEmp();if(!ready())return loading();if(!S.mes)return head('Conciliación bancaria','')+needMes();
+ const cta=bancoCta();if(!cta)return head('Conciliación bancaria','')+`<div class="note warn">No hay cuentas marcadas como bancarias. Márcalas en <a href="#plan">Plan de cuentas</a>.</div>`;
+ const ym=ymSel();const [d,h]=rango();const all=movsTodos().filter(m=>m.cuenta===cta);const matched=new Set(all.filter(m=>m.match).map(m=>m.match));
+ const movsMes=all.filter(m=>m._ym===ym).sort((a,b)=>a.fecha<b.fecha?-1:1);const lin=lineasBanco(cta,h);const linMap=Object.fromEntries(lin.map(l=>[l.k,l]));
+ const pendLib=lin.filter(l=>!matched.has(l.k));const pendBan=all.filter(m=>!m.match&&m.fecha<=h).sort((a,b)=>a.fecha<b.fecha?-1:1);const conc=movsMes.filter(m=>m.match);
+ const saldoLib=sum(lin,l=>l.monto);const saldoBan=pn(((S.banco[ym]||{}).saldos||{})[cta]);
+ const girosNC=-sum(pendLib.filter(l=>l.monto<0),l=>l.monto),depT=sum(pendLib.filter(l=>l.monto>0),l=>l.monto);
+ const cargosNC=-sum(pendBan.filter(m=>m.monto<0),m=>m.monto),abonosNC=sum(pendBan.filter(m=>m.monto>0),m=>m.monto);
+ const ajBanco=saldoBan-girosNC+depT, ajLib=saldoLib-cargosNC+abonosNC;const dif=Math.round(ajBanco-ajLib);
+ const fm=S.f.mov||{fecha:d,desc:'',monto:''};const selM=S.sel.mov,selL=S.sel.lin;
+ const mSel=pendBan.find(m=>m.id===selM),lSel=pendLib.find(l=>l.k===selL);
+ return head('Conciliación bancaria',`${esc(perTxt())} · compara la cartola con el mayor de la cuenta banco`,`<label class="fl">Cuenta<select id="banco-cta" data-top="banco">${bancos().map(b=>`<option value="${b.codigo}" ${b.codigo===cta?'selected':''}>${b.codigo} ${esc(b.nombre)}</option>`).join('')}</select></label>`)+
+ `<div class="kpis"><div class="kpi"><span>Saldo según libro</span><b>${fmt(saldoLib)}</b><small>al ${fd(h)}</small></div><div class="kpi"><span>Saldo según cartola</span><b>${fmt(saldoBan)}</b><small>Ingrésalo abajo</small></div>
+ <div class="kpi"><span>Partidas pendientes</span><b>${pendBan.length+pendLib.length}</b><small>${pendBan.length} del banco · ${pendLib.length} del libro</small></div>
+ <div class="kpi"><span>Diferencia</span><b style="color:${dif===0?'var(--ok)':'var(--bad)'}">${fmt(dif)}</b><small>${dif===0?'Conciliado':'Revisa las partidas'}</small></div></div>
+ <div class="sheet"><div class="sheet-h"><h2>Cartola del banco</h2><span class="sub">Cargos en negativo, abonos en positivo</span></div><div class="sheet-b">
+  <div class="form"><label>Saldo final según cartola<input id="bco-saldo" class="num" data-save="saldoBanco" value="${esc(((S.banco[ym]||{}).saldos||{})[cta]??'')}" inputmode="numeric"></label>
+  <label>Fecha<input type="date" id="mov-fecha" data-f="mov.fecha" value="${esc(fm.fecha)}"></label><label class="wide">Descripción<input id="mov-desc" data-f="mov.desc" value="${esc(fm.desc)}"></label>
+  <label>Monto (±)<input id="mov-monto" class="num" data-f="mov.monto" value="${esc(fm.monto)}" inputmode="numeric" placeholder="-25.000"></label></div>
+  <div class="row" style="margin-top:10px"><button class="btn" data-act="mov-add">Agregar movimiento</button><button class="btn" data-act="imp-toggle" data-k="cartola">${S.showImp.cartola?'Cerrar importación':'Importar cartola CSV'}</button></div>
+  ${S.showImp.cartola?`<div style="margin-top:12px"><div class="row" style="margin-bottom:8px"><input type="file" accept=".csv,.txt" id="imp-file-cartola" data-file="cartola"><span class="muted">Columnas: Fecha; Descripción; Cargo; Abono (o una sola columna Monto)</span></div><textarea id="imp-txt-cartola" data-imp="cartola" placeholder="Fecha;Descripción;Cargo;Abono&#10;02/10/2026;Transferencia cliente;;350.000">${esc(S.imp.cartola||'')}</textarea><div class="row" style="margin-top:8px"><button class="btn pri" data-act="cart-imp">Importar movimientos</button></div></div>`:''}
+ </div></div>
+ <div class="sheet"><div class="sheet-h"><h2>Partidas por conciliar</h2><div class="row"><button class="btn" data-act="conc-auto">Conciliar automáticamente</button><button class="btn pri" data-act="conc" ${mSel&&lSel?'':'disabled'}>Conciliar selección</button></div></div>
+ <div class="sheet-b"><p class="muted" style="margin:0 0 10px;font-size:12.5px">Toca un movimiento del banco y uno del libro con el mismo monto para conciliarlos. La conciliación automática une montos iguales con hasta 5 días de diferencia.${mSel&&lSel&&Math.round(mSel.monto)!==Math.round(lSel.monto)?' <span class="pill warn">Los montos seleccionados no coinciden</span>':''}</p>
+ <div class="grid2"><div><h3 style="font-size:13px;margin:0 0 6px">Banco sin registrar en libro</h3><div class="scroll"><table><thead><tr><th>Fecha</th><th>Descripción</th><th class="n">Monto</th><th></th></tr></thead><tbody>
+ ${pendBan.map(m=>`<tr class="click${m.id===selM?' picked':''}" data-act="mov-sel" data-id="${m.id}"><td class="c">${fd(m.fecha)}</td><td>${esc(m.desc)}</td><td class="n">${fmt(m.monto)}</td><td>${confirmBtn('delMov:'+m.id,'Eliminar')}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Sin pendientes.</td></tr>'}
+ </tbody></table></div>
+ ${mSel?`<div class="row" style="margin-top:10px"><label class="fl" style="flex:1;min-width:200px">Contabilizar contra<select id="cont-cta" data-f="cont.cuenta">${plan().filter(c=>c.codigo!==cta).map(c=>`<option value="${c.codigo}" ${(S.f.cont||{}).cuenta===c.codigo?'selected':''}>${c.codigo} ${esc(c.nombre)}</option>`).join('')}</select></label><button class="btn" data-act="mov-cont" style="align-self:flex-end">Crear asiento y conciliar</button></div>`:''}
+ </div><div><h3 style="font-size:13px;margin:0 0 6px">Libro sin aparecer en cartola</h3><div class="scroll"><table><thead><tr><th>Fecha</th><th>N°</th><th>Glosa</th><th class="n">Monto</th></tr></thead><tbody>
+ ${pendLib.map(l=>`<tr class="click${l.k===selL?' picked':''}" data-act="lin-sel" data-id="${l.k}"><td class="c">${fd(l.fecha)}</td><td class="c">${l.numero}</td><td>${esc(l.glosa)}</td><td class="n">${fmt(l.monto)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">Sin pendientes.</td></tr>'}
+ </tbody></table></div></div></div></div></div>
+ <div class="grid2"><div class="sheet"><div class="sheet-h"><h2>Informe de conciliación</h2>${csvBtn('conc')}</div><div class="scroll"><table><tbody>
+ <tr><td>Saldo según cartola</td><td class="n">${fmt(saldoBan)}</td></tr><tr><td>(−) Cheques y giros no cobrados</td><td class="n">${fmt(-girosNC)}</td></tr><tr><td>(+) Depósitos en tránsito</td><td class="n">${fmt(depT)}</td></tr><tr class="sub"><td>Saldo banco ajustado</td><td class="n">${fmt(ajBanco)}</td></tr>
+ <tr><td>Saldo según libro</td><td class="n">${fmt(saldoLib)}</td></tr><tr><td>(−) Cargos bancarios no contabilizados</td><td class="n">${fmt(-cargosNC)}</td></tr><tr><td>(+) Abonos bancarios no contabilizados</td><td class="n">${fmt(abonosNC)}</td></tr><tr class="sub"><td>Saldo libro ajustado</td><td class="n">${fmt(ajLib)}</td></tr>
+ <tr class="tot"><td>Diferencia</td><td class="n">${fmt(dif)}</td></tr></tbody></table></div></div>
+ <div class="sheet"><div class="sheet-h"><h2>Conciliados en el mes</h2><span class="sub">${conc.length}</span></div><div class="scroll"><table><thead><tr><th>Fecha</th><th>Banco</th><th>Asiento</th><th class="n">Monto</th><th></th></tr></thead><tbody>
+ ${conc.map(m=>{const l=linMap[m.match];return `<tr><td class="c">${fd(m.fecha)}</td><td>${esc(m.desc)}</td><td>${l?`N°${l.numero} ${esc(l.glosa)}`:'<span class="pill warn">Asiento eliminado</span>'}</td><td class="n">${fmt(m.monto)}</td><td><button class="btn sm" data-act="desconc" data-id="${m.id}">Deshacer</button></td></tr>`}).join('')||'<tr><td colspan="5" class="muted">Aún no hay partidas conciliadas.</td></tr>'}
+ </tbody></table></div></div></div>`}
