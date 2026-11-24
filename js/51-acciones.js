@@ -43,6 +43,18 @@ const A={
    if(!r.ok)throw new Error('HTTP '+r.status);await restaurar(await r.text())}
   catch(e){toast('No se pudo cargar el ejemplo. Usa Restaurar respaldo con el archivo de la carpeta datos-de-prueba.','err')}},
  'ed-new':()=>{S.ed=blankEd()},
+ /* Carga masiva de asientos desde un listado pegado o un CSV (Libro diario). */
+ 'mas-toggle':()=>{S.showImp.diario=!S.showImp.diario},
+ 'mas-cerrar':()=>{S.showImp.diario=false},
+ 'mas-ejemplo':()=>{S.imp.diario=MAS_EJEMPLO;S.showImp.diario=true},
+ 'mas-plantilla':()=>saveFile('plantilla-asientos.csv','\uFEFF'+MAS_EJEMPLO+'\r\n'),
+ 'mas-run':async()=>{const r=parseAsientosMasivos(S.imp.diario);if(r.errores.length){toast('Corrige los '+r.errores.length+' problema(s) del listado antes de importar.','err');return}
+  if(!r.asientos.length){toast('No hay asientos que importar.','err');return}
+  S.busy=true;
+  try{const g=await guardarAsientosMasivos(r.asientos);S.imp.diario='';S.showImp.diario=false;
+   toast(`${g.length} asiento(s) registrados, del N°${g[0].numero} al N°${g[g.length-1].numero}`)}
+  catch(e){}
+  finally{S.busy=false}},
  'ed-edit':t=>{const a=asientos().find(x=>x.id===t.dataset.id);if(!a)return;S.ed={...clone(a),_oldYm:a.fecha.slice(0,7),lineas:a.lineas.map(l=>({cuenta:l.cuenta,debe:l.debe?String(l.debe):'',haber:l.haber?String(l.haber):'',glosa:l.glosa||'',rut:l.rut?rutFmt(l.rut):'',ref:l.ref||''}))};window.scrollTo(0,0)},
  'ed-addl':()=>{S.ed.lineas.push({cuenta:'',debe:'',haber:'',glosa:''})},
  'ed-dell':t=>{S.ed.lineas.splice(+t.dataset.i,1)},

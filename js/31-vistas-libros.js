@@ -12,11 +12,22 @@ function vEditor(){const ed=S.ed;const t=edTotals();
  <div class="cuadre" id="ed-tot"><span>Debe <b>${fmt(t.d)}</b></span><span>Haber <b>${fmt(t.h)}</b></span>${t.ok?'<span class="pill ok">Cuadrado</span>':`<span class="pill bad">Diferencia ${fmt(t.d-t.h)}</span>`}</div></div>
  <div class="row" style="margin-top:14px"><button class="btn pri" data-act="ed-save" id="ed-save" ${t.ok?'':'disabled'}>Guardar asiento</button><button class="btn ghost" data-act="ed-cancel">Cancelar</button></div>
  </div></div>`}
+
+/* Carga masiva: se pega el listado (o se abre un CSV) y la app muestra la vista previa antes de guardar. */
+function vMasivoDiario(){
+ const r=parseAsientosMasivos(S.imp.diario||'');
+ return `<div class="sheet" id="masivo"><div class="sheet-h"><h2>Registrar asientos en masa</h2><span class="sub">Una fila por cuenta · las filas con la misma fecha y glosa forman un mismo asiento · se revisa antes de guardar</span></div><div class="sheet-b">
+ <div class="row" style="margin-bottom:8px;flex-wrap:wrap;gap:8px"><input type="file" accept=".csv,.txt" data-file="diario"><span class="muted">o pega el listado abajo</span><button class="btn sm ghost" data-act="mas-ejemplo">Poner un ejemplo</button><button class="btn sm ghost" data-act="mas-plantilla">Descargar plantilla CSV</button></div>
+ <textarea id="mas-txt" data-imp="diario" style="min-height:200px" spellcheck="false" placeholder="Fecha;Glosa;Cuenta;Debe;Haber&#10;05-10-2026;Pago arriendo oficina;5201004 Arriendos;350000;&#10;05-10-2026;Pago arriendo oficina;1101002 Banco cuenta corriente;;350000">${esc(S.imp.diario||'')}</textarea>
+ <p class="muted" style="margin:8px 0 0;font-size:12.5px">${MAS_AYUDA}</p>
+ <div id="mas-prev" style="margin-top:10px">${masPreviewHTML()}</div>
+ <div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="mas-btn" data-act="mas-run" ${r.errores.length||!r.asientos.length?'disabled':''}>${r.asientos.length?`Importar ${r.asientos.length} asiento(s)`:'Importar asientos'}</button><button class="btn ghost" data-act="mas-cerrar">Cerrar</button><span class="muted">${S.ro?'Tu rol es de solo lectura: no se puede guardar.':''}</span></div>
+ </div></div>`}
 function vDiario(){const e=emp();if(!e)return head('Libro diario','')+noEmp();if(!ready())return loading();
  const R=rango();const q=norm(S.q);const qn=rutClean(S.q);const qm=Math.round(pn(S.q));
  const hit=a=>!q||norm(a.glosa).includes(q)||(a.lineas||[]).some(l=>(qn.length>=3&&rutClean(l.rut).includes(qn))||String(l.ref||'')===S.q.trim()||(qm&&(Math.round(l.debe)===qm||Math.round(l.haber)===qm))||norm(ctaNom(l.cuenta)).includes(q)||l.cuenta===S.q.trim());
  const lista=asientos().filter(a=>enRango(a.fecha,R)&&hit(a));const D=sum(lista,a=>sum(a.lineas,l=>l.debe)),H=sum(lista,a=>sum(a.lineas,l=>l.haber));
- return head('Libro diario',`${esc(perTxt())} · ${lista.length} asientos${cerrado()?` · cerrado hasta ${cerradoTxt()}`:''}`,`<input id="diario-q" data-q="1" value="${esc(S.q)}" placeholder="Buscar glosa, cuenta, RUT o monto" style="min-width:min(260px,100%)">${csvBtn('diario')}${S.ed?'':'<button class="btn pri" data-act="ed-new">Nuevo asiento</button>'}`)+(S.ed?vEditor():'')+
+ return head('Libro diario',`${esc(perTxt())} · ${lista.length} asientos${cerrado()?` · cerrado hasta ${cerradoTxt()}`:''}`,`<input id="diario-q" data-q="1" value="${esc(S.q)}" placeholder="Buscar glosa, cuenta, RUT o monto" style="min-width:min(260px,100%)">${csvBtn('diario')}${S.ed?'':`<button class="btn" data-act="mas-toggle">${S.showImp.diario?'Cerrar carga masiva':'Registrar en masa'}</button><button class="btn pri" data-act="ed-new">Nuevo asiento</button>`}`)+(S.ed?vEditor():'')+(S.showImp.diario&&!S.ed?vMasivoDiario():'')+
  `<div class="sheet">${lista.length?`<div class="scroll"><table><thead><tr><th>N° / Cuenta</th><th>Fecha / Detalle</th><th class="n">Debe</th><th class="n">Haber</th><th></th></tr></thead><tbody>
  ${lista.map(a=>{const kind=a.origen&&a.origen.kind;const lock=bloq(a.fecha);const canEdit=!lock&&(!kind||['banco','pago','saldos'].includes(kind));const canDel=!lock&&!['compras','ventas'].includes(kind);
  const au=autorTxt(a);return `<tr class="ah"><td>${a.numero}</td><td><b>${esc(a.glosa)}</b> <span class="muted">· ${fd(a.fecha)} · ${esc(a.tipo||'')}</span> ${kind?`<span class="pill acc">${ORIGEN_TXT[kind]||kind}</span>`:''} ${cuadra(a)?'':'<span class="pill bad">Descuadrado</span>'}${au?`<br><span class="autor">${au}</span>`:''}</td><td></td><td></td><td><div class="row" style="justify-content:flex-end">${lock?'<span class="pill">Período cerrado</span>':''}${canEdit?`<button class="btn sm" data-act="ed-edit" data-id="${a.id}">Editar</button>`:''}${canDel?confirmBtn('delAs:'+a.id,'Eliminar'):''}</div></td></tr>

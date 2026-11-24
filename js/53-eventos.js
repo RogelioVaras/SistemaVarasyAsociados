@@ -10,7 +10,7 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.dataset.f){const [f,k]=t.dataset.f.split('.');S.f[f]=S.f[f]||{};S.f[f][k]=t.value;if((f==='compras'||f==='ventas')&&k==='rut'){const rg=reglaDe(f,t.value);if(rg&&S.f[f].cuenta!==rg){S.f[f].cuenta=rg;const sl=$('#df-cta');if(sl)sl.value=rg}}if(f==='compras'||f==='ventas')calcDoc(f,k);if(f==='hon')updHon();if(k==='rut')f==='emp'?autoRutEmp(t):autoRutDoc(f,t);return}
  if(t.dataset.ed){S.ed[t.dataset.ed]=t.value;return}
  if(t.dataset.el){const [i,k]=t.dataset.el.split('.');const l=S.ed.lineas[+i];if(k==='cuenta'){l._txt=t.value;l.cuenta=parseCta(t.value)}else{l[k]=t.value;if(k==='debe'&&t.value)l.haber='';if(k==='haber'&&t.value)l.debe='';const other=document.getElementById(`el-${i}-${k==='debe'?'h':'d'}`);if(other&&t.value)other.value=''}updEdTot();return}
- if(t.dataset.imp){S.imp[t.dataset.imp]=t.value;return}
+ if(t.dataset.imp){S.imp[t.dataset.imp]=t.value;if(t.dataset.imp==='diario')masPintar();return}
  if(t.dataset.q){S.q=t.value;render();return}
  if(t.dataset.qh){S.qh=t.value;render()}});
 document.addEventListener('change',async e=>{const t=e.target;
