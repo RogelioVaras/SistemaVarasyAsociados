@@ -44,12 +44,26 @@ create table if not exists public.perfiles (
   email    text
 );
 
+-- Quién puede escribir los datos comunes (config/indicadores: UF, UTM, parámetros).
+create table if not exists public.administradores (
+  user_id  uuid primary key references auth.users (id) on delete cascade,
+  nota     text,
+  creado   timestamptz not null default now()
+);
+alter table public.administradores enable row level security;
+
 -- 2. Funciones auxiliares ----------------------------------------------
 
 -- Rol del usuario actual en una empresa (null si no tiene acceso).
 create or replace function public.rol_en(p_empresa text)
 returns text language sql stable security definer set search_path = public as $$
   select rol from public.miembros where empresa_id = p_empresa and user_id = auth.uid()
+$$;
+
+-- ¿El usuario actual puede escribir los datos comunes (config/indicadores)?
+create or replace function public.es_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.administradores where user_id = auth.uid())
 $$;
 
 -- Crea el perfil cuando alguien se registra.
@@ -71,6 +85,11 @@ returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if new.parent = 'empresas' and not exists (select 1 from public.miembros where empresa_id = new.empresa_id) then
     insert into public.miembros (empresa_id, user_id, rol) values (new.empresa_id, auth.uid(), 'dueno');
+    -- El primer dueño del sistema también administra los datos comunes.
+    if not exists (select 1 from public.administradores) then
+      insert into public.administradores (user_id, nota) values (auth.uid(), 'primera empresa')
+      on conflict (user_id) do nothing;
+    end if;
   end if;
   return new;
 end $$;
@@ -137,15 +156,19 @@ create policy doc_leer on public.documentos for select to authenticated using (
 
 drop policy if exists doc_crear on public.documentos;
 create policy doc_crear on public.documentos for insert to authenticated with check (
-  empresa_id is null
-  or public.rol_en(empresa_id) in ('dueno', 'editor')
-  or (parent = 'empresas' and not exists (select 1 from public.miembros m where m.empresa_id = documentos.empresa_id))
+  (empresa_id is null and public.es_admin())
+  or (empresa_id is not null and (
+        public.rol_en(empresa_id) in ('dueno', 'editor')
+        or (parent = 'empresas' and not exists (select 1 from public.miembros m where m.empresa_id = documentos.empresa_id))
+     ))
 );
 
 drop policy if exists doc_modificar on public.documentos;
 create policy doc_modificar on public.documentos for update to authenticated
-  using (empresa_id is null or public.rol_en(empresa_id) in ('dueno', 'editor'))
-  with check (empresa_id is null or public.rol_en(empresa_id) in ('dueno', 'editor'));
+  using ((empresa_id is null and public.es_admin())
+         or (empresa_id is not null and public.rol_en(empresa_id) in ('dueno', 'editor')))
+  with check ((empresa_id is null and public.es_admin())
+         or (empresa_id is not null and public.rol_en(empresa_id) in ('dueno', 'editor')));
 
 drop policy if exists doc_eliminar on public.documentos;
 create policy doc_eliminar on public.documentos for delete to authenticated using (
@@ -171,9 +194,24 @@ drop policy if exists perfiles_editar on public.perfiles;
 create policy perfiles_editar on public.perfiles for update to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
+drop policy if exists adm_leer on public.administradores;
+create policy adm_leer on public.administradores for select to authenticated
+  using (user_id = auth.uid());
+
 -- 4. Tiempo real ------------------------------------------------------
 -- Permite que la pantalla se actualice sola cuando otra persona registra algo.
 alter table public.documentos replica identity full;
 do $$ begin
   alter publication supabase_realtime add table public.documentos;
 exception when duplicate_object then null; end $$;
+
+-- 5. Permisos de tabla -------------------------------------------------
+-- Supabase suele otorgarlos solo, pero en proyectos nuevos con la API de datos
+-- restringida puede faltar el permiso de escritura: la lectura funciona y al guardar
+-- responde "permission denied" (42501). Estos GRANT son la red de seguridad.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.documentos to authenticated;
+grant select on public.miembros to authenticated;
+grant select on public.administradores to authenticated;
+grant select, update on public.perfiles to authenticated;
+grant execute on all functions in schema public to authenticated;
