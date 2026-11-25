@@ -16,6 +16,6 @@
    Déjalo vacío para no consultar nada fuera del equipo. */
 window.PD_CONFIG = {
   supabaseUrl: 'https://byrgnqvglscadcwdiatg.supabase.co',
-  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5cmducXZnbHNjYWRjd2RpYXRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ0NDI0NTksImV4cCI6MjExMDAxODQ1OX0.OXIpl5kUdiAF9PRseoMY2xij79KhkhJbn4-DMNkP1r8',
+  supabaseAnonKey: 'sb_publishable_XRBomTDSXjX5vY5XlwLVdg_MSBqxm1J',
   rutApi: ''
 };
