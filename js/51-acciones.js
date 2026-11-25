@@ -1,5 +1,7 @@
 /* Partida Doble · Acciones de los botones (A) y confirmaciones de eliminación (CONFIRM). */
 /* ============ Acciones ============ */
+/* El formulario del comprobante a partir de un asiento ya guardado (para corregir o imprimir). */
+function edDesdeAsiento(a){return{...clone(a),_oldYm:a.fecha.slice(0,7),lineas:(a.lineas||[]).map(l=>({cuenta:l.cuenta,debe:l.debe?String(l.debe):'',haber:l.haber?String(l.haber):'',glosa:l.glosa||'',rut:l.rut?rutFmt(l.rut):'',ref:l.ref||''}))}}
 function blankEd(){const [d,h]=rango();const f=hoy();return{id:null,numero:null,fecha:enRango(f,[d,h])?f:d,tipo:'Traspaso',glosa:'',lineas:[{cuenta:'',debe:'',haber:'',glosa:''},{cuenta:'',debe:'',haber:'',glosa:''}]}}
 function parseCta(txt){txt=String(txt||'').trim();if(!txt)return'';const code=txt.split(/\s+/)[0];if(cm()[code])return code;const n=norm(txt);const hit=plan().find(c=>norm(c.nombre)===n)||plan().filter(c=>norm(c.nombre).includes(n));return Array.isArray(hit)?(hit.length===1?hit[0].codigo:''):(hit?hit.codigo:'')}
 function updEdTot(){const t=edTotals();const el=$('#ed-tot');if(el)el.innerHTML=`<span>Debe <b>${fmt(t.d)}</b></span><span>Haber <b>${fmt(t.h)}</b></span>${t.ok?'<span class="pill ok">Cuadrado</span>':`<span class="pill bad">Diferencia ${fmt(t.d-t.h)}</span>`}`;const b=$('#ed-save');if(b)b.disabled=!t.ok}
@@ -55,7 +57,9 @@ const A={
    toast(`${g.length} comprobante(s) registrados, del N°${g[0].numero} al N°${g[g.length-1].numero}`)}
   catch(e){}
   finally{S.busy=false}},
- 'ed-edit':t=>{const a=asientos().find(x=>x.id===t.dataset.id);if(!a)return;S.ed={...clone(a),_oldYm:a.fecha.slice(0,7),lineas:a.lineas.map(l=>({cuenta:l.cuenta,debe:l.debe?String(l.debe):'',haber:l.haber?String(l.haber):'',glosa:l.glosa||'',rut:l.rut?rutFmt(l.rut):'',ref:l.ref||''}))};window.scrollTo(0,0)},
+ 'ed-edit':t=>{const a=asientos().find(x=>x.id===t.dataset.id);if(!a)return;S.ed=edDesdeAsiento(a);window.scrollTo(0,0)},
+ 'ed-print':async()=>{if(!S.ed||!S.ed.id){toast('Primero guarda el comprobante; después puedes descargarlo.','err');return}await exportPDF('comprobante',S.ed.id)},
+ 'ed-pdf':async t=>{await exportPDF('comprobante',t.dataset.id)},
  'ed-addl':()=>{S.ed.lineas.push({cuenta:'',debe:'',haber:'',glosa:''})},
  'ed-dell':t=>{S.ed.lineas.splice(+t.dataset.i,1)},
  'ed-cancel':()=>{S.ed=null},
@@ -66,7 +70,7 @@ const A={
   if(L.length<2){toast('Un asiento necesita al menos dos líneas.','err');return}if(sum(L,l=>l.debe)!==sum(L,l=>l.haber)){toast('El asiento no cuadra.','err');return}
   const keepNum=ed.numero&&ed._oldYm&&ed._oldYm.slice(0,4)===ed.fecha.slice(0,4);
   const a={id:ed.id||uid(),numero:keepNum?ed.numero:nextNum(ed.fecha.slice(0,4)),fecha:ed.fecha,tipo:ed.tipo,glosa:ed.glosa.trim(),lineas:L,...(ed.origen?{origen:ed.origen}:{})};
-  const old=ed._oldYm;S.ed=null;await guardarAsiento(a,old);toast(`Comprobante N°${a.numero} guardado`)},
+  const old=ed._oldYm;await guardarAsiento(a,old);S.ed=edDesdeAsiento(a);toast(`Comprobante N°${a.numero} guardado`)},
  'doc-new':t=>{S.f[t.dataset.k]=docFormBlank(t.dataset.k)},
  'hon-new':()=>{const [d,h]=rango();const f=hoy();S.f.hon={id:null,fecha:enRango(f,[d,h])?f:d,numero:'',rut:'',nombre:'',bruto:'',retenida:'1',cuenta:claves().honGasto}},
  'hon-edit':t=>{const h=honDe().find(x=>x.id===t.dataset.id);if(!h)return;S.f.hon={...clone(h),rut:rutFmt(h.rut),bruto:String(h.bruto),retenida:h.retenida===false?'0':'1',_oldYm:h._ym};window.scrollTo(0,0)},

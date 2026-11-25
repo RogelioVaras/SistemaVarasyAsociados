@@ -36,7 +36,7 @@ function pdfReport({title,sub,cols,rows,land,firmas}){const pdf=new MiniPDF(land
  const n=pdf.pages.length;pdf.pages.forEach((pg,i)=>{pdf.c=pg;pdf.text(M,pdf.H-M+8,`Emitido el ${fd(hoy())} con Partida Doble`,{size:6.5,color:GRAY});pdf.text(pdf.W-M,pdf.H-M+8,`Página ${i+1} de ${n}`,{size:6.5,align:'right',color:GRAY})});
  return pdf.out()}
 const F=n=>fmt(n),FZ=n=>fz(n);
-function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=perTxt();let rep;
+function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=perTxt();let rep,nombreFijo='';
  if(w==='diario'){const rows=[];let D=0,H=0;for(const a of asientos().filter(a=>enRango(a.fecha,R))){rows.push({style:'sub',cells:[String(a.numero),`${fd(a.fecha)} · ${a.tipo||''} · ${a.glosa}`,'','']});for(const l of a.lineas){D+=+l.debe||0;H+=+l.haber||0;rows.push({indent:1,cells:[l.cuenta,ctaNom(l.cuenta)+(l.rut?` · ${rutFmt(l.rut)}`:'')+(l.glosa?` · ${l.glosa}`:''),FZ(l.debe),FZ(l.haber)]})}}
   rows.push({style:'tot',cells:['','Totales del período',F(D),F(H)]});rep={title:'Libro diario',sub:per,cols:[{h:'N° / Cuenta',w:1},{h:'Detalle',w:4.6},{h:'Debe',w:1.3,align:'right'},{h:'Haber',w:1.3,align:'right'}],rows}}
  else if(w==='mayor'){const {si,movs}=mayorData(S.mayorCta);let s=si;const rows=[{style:'sub',cells:['','','Saldo inicial','','',F(si)]}];let D=0,H=0;for(const {a,l} of movs){s+=(+l.debe||0)-(+l.haber||0);D+=+l.debe||0;H+=+l.haber||0;rows.push([fd(a.fecha),String(a.numero),a.glosa+(l.glosa?' · '+l.glosa:''),FZ(l.debe),FZ(l.haber),F(s)])}
@@ -76,6 +76,18 @@ function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=pe
   r('Líquido a pagar',c.liq,'tot');rows.push({cells:[`Son: ${numPalabras(c.liq).replace(/veintiuno$/,'veintiún').replace(/uno$/,'un')} pesos.`,'']});rows.push({style:'gap'});
   rows.push({cells:[`Base tributable ${F(c.trib)} · UTM ${F(c.utm)} · UF ${new Intl.NumberFormat('es-CL',{maximumFractionDigits:2}).format(c.uf)}`,'']});rows.push({cells:[`Aportes del empleador: reforma previsional ${F(c.ref)}, cesantía ${F(c.afcE)}, mutual ${F(c.mut)}`,'']});
   rep={title:'Liquidación de remuneraciones',sub:per,cols:[{h:'',w:5},{h:'',w:1.6,align:'right'}],rows,firmas:[['Empleador',e.repLegal||e.razon],['Trabajador',`${l.nombre} · ${rutFmt(l.rut)}`]]}}
- if(!rep)return;const bytes=pdfReport(rep);const name=w==='liq'?`liquidacion_${(((S.remu[ymSel()]||{}).liqs||[]).find(x=>x.tid===id)||{}).rut||''}_${ymSel()}.pdf`:nomArchivo(rep.title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_')).replace(/\.csv$/,'.pdf');
+ else if(w==='comprobante'){const a=asientos().find(x=>x.id===id);if(!a)return;const L=a.lineas||[];const D=sum(L,l=>+l.debe||0),H=sum(L,l=>+l.haber||0);const rows=[];
+  const meta=(k,v)=>rows.push({cells:[`${k}: ${v}`,'','']});
+  meta('Comprobante N°',String(a.numero));meta('Fecha',fd(a.fecha));meta('Tipo',a.tipo||'—');meta('Glosa',a.glosa||'—');if(a.origen)meta('Documento de origen',ORIGEN_TXT[a.origen.kind]||a.origen.kind);
+  rows.push({style:'gap'});
+  for(const l of L){const extra=[l.glosa,l.rut?`RUT ${rutFmt(l.rut)}`:'',l.ref?`Doc ${l.ref}`:''].filter(Boolean).join(' · ');
+   rows.push({indent:1,cells:[`${l.cuenta} ${ctaNom(l.cuenta)}${extra?' · '+extra:''}`,FZ(l.debe),FZ(l.haber)]})}
+  rows.push({style:'tot',cells:['Totales del comprobante',F(D),F(H)]});rows.push({style:'gap'});
+  rows.push({cells:[`Son: ${numPalabras(D)} pesos.`,'','']});
+  const autor=a.creadoPor?quien(a.creadoPor):(S.email||'');
+  nombreFijo=`comprobante_${String(a.numero)}_${a.fecha}.pdf`;
+  rep={title:'Comprobante contable',sub:`N° ${a.numero} · ${fd(a.fecha)}`,cols:[{h:'Cuenta y detalle',w:4.6},{h:'Debe',w:1.2,align:'right'},{h:'Haber',w:1.2,align:'right'}],rows,
+   firmas:[['Confeccionado por',autor],['Revisado por',''],['Representante legal',e.repLegal||e.razon||'']]}}
+ if(!rep)return;const bytes=pdfReport(rep);const name=nombreFijo||(w==='liq'?`liquidacion_${(((S.remu[ymSel()]||{}).liqs||[]).find(x=>x.tid===id)||{}).rut||''}_${ymSel()}.pdf`:nomArchivo(rep.title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_')).replace(/\.csv$/,'.pdf'));
  return saveFile(name,bytes)}
 
