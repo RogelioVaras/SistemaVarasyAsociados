@@ -66,22 +66,12 @@ function agruparFacturas(ver){const m={};
  for(const r of ver){const g=m[r.rut]||(m[r.rut]={rut:r.rut,razon:'',n:0,total:0,pagado:0,pend:0,vencido:0});
   g.n++;g.total+=r.total;g.pagado+=r.pagado;g.pend+=r.pend;if(r.diasVenc>0)g.vencido+=r.pend;if(!g.razon&&r.razon)g.razon=r.razon}
  return Object.values(m).sort((a,b)=>b.pend-a.pend)}
-function vFacturas(kind){const e=emp();const esCob=kind==='cobrar';const titulo=esCob?'Facturas por cobrar':'Facturas por pagar';
- if(!e)return head(titulo,'')+noEmp();if(!ready())return loading();
+/* Contenido que cambia con los filtros (indicadores, saldos a favor y tabla).
+   Se pinta aparte para no reemplazar los campos de filtro mientras se escriben. */
+function fxRes(kind){const esCob=kind==='cobrar';
  const {f,todas,ver,favor}=facturasFiltradas(kind);
  const pend=sum(ver,r=>r.pend),total=sum(ver,r=>r.total),pag=sum(ver,r=>r.pagado);
  const vencido=sum(ver,r=>r.diasVenc>0?r.pend:0);const nVenc=ver.filter(r=>r.diasVenc>0).length;
- const tipos=[...new Set(todas.map(r=>String(r.tipo)))].sort();
- const ctrl=`<label class="fl">Desde<input type="date" id="fx-desde" data-fx="desde" data-fk="${kind}" value="${esc(f.desde)}"></label>`+
-  `<label class="fl">Hasta<input type="date" id="fx-hasta" data-fx="hasta" data-fk="${kind}" value="${esc(f.hasta)}"></label>`+
-  `<input id="fx-q" data-fx="q" data-fk="${kind}" value="${esc(f.q)}" placeholder="RUT, razón social o folio" style="min-width:min(200px,100%)">`+
-  `<label class="fl">Vence<select id="fx-venc" data-fx="venc" data-fk="${kind}"><option value="todas"${f.venc==='todas'?' selected':''}>Todas</option><option value="vencidas"${f.venc==='vencidas'?' selected':''}>Vencidas</option><option value="porVencer"${f.venc==='porVencer'?' selected':''}>Por vencer</option></select></label>`+
-  `<label class="fl">Plazo<input class="num" id="fx-plazo" data-fx="plazo" data-fk="${kind}" value="${esc(String(f.plazo))}" inputmode="numeric" style="width:64px" title="Días de plazo para el vencimiento"></label>`+
-  `<label class="fl">Tipo<select id="fx-tipo" data-fx="tipo" data-fk="${kind}"><option value=""${f.tipo===''?' selected':''}>Todos</option>${tipos.map(x=>`<option value="${x}"${String(f.tipo)===x?' selected':''}>${esc(CORTO[+x]||x)}</option>`).join('')}</select></label>`+
-  `<label class="fl">Antigüedad<select id="fx-tramo" data-fx="tramo" data-fk="${kind}"><option value=""${f.tramo===''?' selected':''}>Todas</option>${FX_TRAMOS.map(x=>`<option value="${esc(x)}"${f.tramo===x?' selected':''}>${esc(x)}</option>`).join('')}</select></label>`+
-  `<button class="btn sm ${f.agrupar?'pri':''}" data-act="fx-agrupar" data-k="${kind}">${f.agrupar?'Por cliente':'Ver por cliente'}</button>`+
-  `<button class="btn sm ${f.todas?'':'pri'}" data-act="fx-todas" data-k="${kind}">${f.todas?'Viendo todas':'Solo pendientes'}</button>`+
-  `<button class="btn sm ghost" data-act="fx-limpiar" data-k="${kind}" title="Volver a los filtros del período">Limpiar</button>`+csvBtn(kind);
  const kpis=`<div class="kpis"><div class="kpi"><span>${esCob?'Por cobrar':'Por pagar'}</span><b>${fmt(pend)}</b><small>${ver.length} documento(s)</small></div>`+
   `<div class="kpi"><span>Vencido</span><b${vencido?' style="color:var(--bad)"':''}>${fmt(vencido)}</b><small>${nVenc} documento(s) con más de ${f.plazo} días</small></div>`+
   `<div class="kpi"><span>Total documentos</span><b>${fmt(total)}</b></div>`+
@@ -98,7 +88,25 @@ function vFacturas(kind){const e=emp();const esCob=kind==='cobrar';const titulo=
    filas+`<tr class="tot"><td colspan="6">Totales</td><td class="n">${fmt(total)}</td><td class="n">${fmt(pag)}</td><td class="n">${fmt(pend)}</td><td></td></tr></tbody></table></div>`
   :`<div class="empty"><h3>Sin documentos que mostrar</h3><p>Revisa los filtros o apaga "Solo pendientes".</p></div>`;
  }
- return head(titulo,`${ver.length} documento(s) · del ${fd(f.desde)} al ${fd(f.hasta)} · el pendiente ya tiene aplicadas las notas de crédito y los abonos`,ctrl)+kpis+
-  `${favor?`<div class="note">Saldos a favor ${esCob?'de clientes':'de proveedores'}: <b>${fmt(favor)}</b> (notas de crédito o pagos que exceden lo facturado).</div>`:''}`+
+ return kpis+`${favor?`<div class="note">Saldos a favor ${esCob?'de clientes':'de proveedores'}: <b>${fmt(favor)}</b> (notas de crédito o pagos que exceden lo facturado).</div>`:''}`+
   `<div class="sheet">${tabla}</div>`;
+}
+/* Vuelve a pintar solo el resultado, sin tocar los campos de filtro. */
+function fxPintar(kind){const el=document.getElementById('fx-res');if(el)el.innerHTML=fxRes(kind)}
+function vFacturas(kind){const e=emp();const esCob=kind==='cobrar';const titulo=esCob?'Facturas por cobrar':'Facturas por pagar';
+ if(!e)return head(titulo,'')+noEmp();if(!ready())return loading();
+ const f=fxDe(kind);const {todas}=facturasFiltradas(kind);
+ const tipos=[...new Set(todas.map(r=>String(r.tipo)))].sort();
+ const ctrl=`<label class="fl">Desde<input type="date" id="fx-desde" data-fx="desde" data-fk="${kind}" value="${esc(f.desde)}"></label>`+
+  `<label class="fl">Hasta<input type="date" id="fx-hasta" data-fx="hasta" data-fk="${kind}" value="${esc(f.hasta)}"></label>`+
+  `<input id="fx-q" data-fx="q" data-fk="${kind}" value="${esc(f.q)}" placeholder="RUT, razón social o folio" style="min-width:min(200px,100%)">`+
+  `<label class="fl">Vence<select id="fx-venc" data-fx="venc" data-fk="${kind}"><option value="todas"${f.venc==='todas'?' selected':''}>Todas</option><option value="vencidas"${f.venc==='vencidas'?' selected':''}>Vencidas</option><option value="porVencer"${f.venc==='porVencer'?' selected':''}>Por vencer</option></select></label>`+
+  `<label class="fl">Plazo<input class="num" id="fx-plazo" data-fx="plazo" data-fk="${kind}" value="${esc(String(f.plazo))}" inputmode="numeric" style="width:64px" title="Días de plazo para el vencimiento"></label>`+
+  `<label class="fl">Tipo<select id="fx-tipo" data-fx="tipo" data-fk="${kind}"><option value=""${f.tipo===''?' selected':''}>Todos</option>${tipos.map(x=>`<option value="${x}"${String(f.tipo)===x?' selected':''}>${esc(CORTO[+x]||x)}</option>`).join('')}</select></label>`+
+  `<label class="fl">Antigüedad<select id="fx-tramo" data-fx="tramo" data-fk="${kind}"><option value=""${f.tramo===''?' selected':''}>Todas</option>${FX_TRAMOS.map(x=>`<option value="${esc(x)}"${f.tramo===x?' selected':''}>${esc(x)}</option>`).join('')}</select></label>`+
+  `<button class="btn sm ${f.agrupar?'pri':''}" data-act="fx-agrupar" data-k="${kind}">${f.agrupar?'Por cliente':'Ver por cliente'}</button>`+
+  `<button class="btn sm ${f.todas?'':'pri'}" data-act="fx-todas" data-k="${kind}">${f.todas?'Viendo todas':'Solo pendientes'}</button>`+
+  `<button class="btn sm ghost" data-act="fx-limpiar" data-k="${kind}" title="Volver a los filtros del período">Limpiar</button>`+csvBtn(kind);
+ return head(titulo,'Filtra por fecha, cliente, vencimiento o antigüedad · el pendiente ya tiene aplicadas las notas de crédito y los abonos',ctrl)+
+  `<div id="fx-res">${fxRes(kind)}</div>`;
 }
