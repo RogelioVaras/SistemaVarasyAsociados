@@ -11,7 +11,11 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.dataset.ed){S.ed[t.dataset.ed]=t.value;return}
  if(t.dataset.el){const [i,k]=t.dataset.el.split('.');const l=S.ed.lineas[+i];if(k==='cuenta'){l._txt=t.value;l.cuenta=parseCta(t.value)}else{l[k]=t.value;if(k==='debe'&&t.value)l.haber='';if(k==='haber'&&t.value)l.debe='';const other=document.getElementById(`el-${i}-${k==='debe'?'h':'d'}`);if(other&&t.value)other.value=''}updEdTot();return}
  if(t.dataset.imp){S.imp[t.dataset.imp]=t.value;if(t.dataset.imp==='diario')masPintar();return}
- if(t.dataset.fx){const k=t.dataset.fk;fxDe(k)[t.dataset.fx]=t.value;render();return}
+ if(t.dataset.fx){const k=t.dataset.fk;fxDe(k)[t.dataset.fx]=t.value;
+  /* Las fechas y los números se escriben por partes: no se redibuja mientras se
+     teclea, porque al reemplazar el campo el navegador rearma la fecha y cambia el año.
+     Se actualiza al salir del campo (change). */
+  if(t.type==='date'||t.type==='number')return;render();return}
  if(t.dataset.q){S.q=t.value;render();return}
  if(t.dataset.qh){S.qh=t.value;render()}});
 document.addEventListener('change',async e=>{const t=e.target;
