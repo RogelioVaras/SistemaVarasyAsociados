@@ -95,6 +95,13 @@ const A={
   const t={id:f.id||uid(),rut:rutClean(f.rut),nombre:f.nombre.trim(),cargo:(f.cargo||'').trim(),ingreso:f.ingreso||'',termino:f.termino||'',contrato:f.contrato,jornada:+String(f.jornada).replace(',','.')||prevP().jornada,sueldo:sue,grat:f.grat,afp:f.afp,salud:f.salud,isapre:f.salud==='isapre'?(f.isapre||''):'',planUF:f.salud==='isapre'?+String(f.planUF).replace(',','.')||0:0,colacion:Math.round(pn(f.colacion)),movilizacion:Math.round(pn(f.movilizacion)),cargas:Math.round(pn(f.cargas)),tramo:f.tramo||''};
   if(t.sueldo<prevP().imm*(Math.min(t.jornada,prevP().jornada)/prevP().jornada)-1)toast('Ojo: el sueldo base es menor al ingreso mínimo para esa jornada.','err');
   const list=clone(trabajadores()).filter(x=>x.id!==t.id);list.push(t);S.f.trab=null;await guardarTrab(list);toast('Trabajador guardado')},
+ 'ind-traer':async()=>{const ym=ymSel();if(!ym){toast('Elige un mes en la barra de arriba para traer la UF y la UTM.','err');return}
+  try{toast('Consultando la UF y la UTM…');const r=await indTraer(ym);S.f.ind=r;toast(`Encontrado: UF ${r.uf?fmt(r.uf.valor):'sin dato'} · UTM ${r.utm?fmt(r.utm.valor):'sin dato'}`)}catch(e){S.f.ind=null;toast(e&&e.message?e.message:'No se pudo consultar el servicio de indicadores.','err')}},
+ 'ind-aplicar':async()=>{const ym=ymSel();const r=S.f.ind;if(!r||!indSirve(r,ym)){S.f.ind=null;toast('La consulta no corresponde al mes en pantalla; vuelve a intentarlo.','err');return}
+  if(S.ro){toast('Tienes acceso de solo lectura.','err');return}
+  const o=clone(S.ind||{});o.uf=o.uf||{};o.utm=o.utm||{};if(r.uf)o.uf[r.ym]=r.uf.valor;if(r.utm)o.utm[r.ym]=r.utm.valor;
+  try{await put('config/indicadores',o);S.f.ind=null;toast('UF y UTM guardadas para '+perTxt()+'.')}catch(e){toast('No se pudo guardar: '+(e&&e.message?e.message:'error'),'err')}},
+ 'ind-descartar':()=>{S.f.ind=null},
  'remu-calc':async()=>{const ym=ymSel();chkBloq(ym);if(!ufMes(ym)||!utm(ym)){S.showImp.param=true;toast('Ingresa la UF y la UTM del mes en Parámetros previsionales.','err');return}
   const doc=clone(S.remu[ym]||{});const prev=Object.fromEntries((doc.liqs||[]).map(l=>[l.tid,l]));const liqs=[];
   for(const t of trabActivos(ym))liqs.push(liqFromTrab(t,ym,prev[t.id]));doc.liqs=liqs;await putE(`remu/${ym}`,doc);await audit('crear','Remuneraciones',`Cálculo de ${liqs.length} liquidaciones de ${perTxt()}`,null,`Líquido total ${fmt(sum(liqs,l=>l.c.liq))}`);toast(`${liqs.length} liquidaciones calculadas`)},
