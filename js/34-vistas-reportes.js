@@ -39,31 +39,66 @@ function vEeff(){const e=emp();if(!e)return head('Estados financieros','')+noEmp
  </tbody></table></div></div></div>`}
 
 /* ---- Facturas por cobrar y por pagar: una fila por documento registrado, con filtros ---- */
-function fxDe(kind){S.fx=S.fx||{};if(!S.fx[kind]){const R=rango();S.fx[kind]={desde:R[0],hasta:R[1],q:'',todas:false}}return S.fx[kind]}
-function vFacturas(kind){const e=emp();const esCob=kind==='cobrar';const titulo=esCob?'Facturas por cobrar':'Facturas por pagar';
- if(!e)return head(titulo,'')+noEmp();if(!ready())return loading();
- const f=fxDe(kind);const tope=f.hasta||rango()[1];
- const todas=facturasDe(esCob?'ventas':'compras',tope).filter(r=>r.fecha>=f.desde&&r.fecha<=f.hasta);
+const FX_TRAMOS=['0-30','31-60','61-90','más de 90'];
+const tramoDe=d=>d<=30?'0-30':d<=60?'31-60':d<=90?'61-90':'más de 90';
+function fxDe(kind){S.fx=S.fx||{};if(!S.fx[kind]){const R=rango();S.fx[kind]={desde:R[0],hasta:R[1]}}
+ const f=S.fx[kind];
+ if(f.q==null)f.q='';if(f.todas==null)f.todas=false;if(f.venc==null)f.venc='todas';
+ if(f.plazo==null)f.plazo='30';if(f.tipo==null)f.tipo='';if(f.tramo==null)f.tramo='';if(f.agrupar==null)f.agrupar=false;
+ if(!f.desde||!f.hasta){const R=rango();f.desde=R[0];f.hasta=R[1]}
+ return f}
+/* Aplica todos los filtros del informe y devuelve lo que se muestra, sirve para pantalla, CSV y PDF. */
+function facturasFiltradas(kind){const f=fxDe(kind);const esCob=kind==='cobrar';const tope=f.hasta||rango()[1];
+ const plazo=Math.max(1,Math.round(pn(f.plazo)||30));
+ const todas=facturasDe(esCob?'ventas':'compras',tope,{plazo}).filter(r=>r.fecha>=f.desde&&r.fecha<=f.hasta);
  const q=norm(f.q),qn=rutClean(f.q),txt=String(f.q||'').trim();
  const hit=r=>!q||(qn.length>=3&&r.rut.includes(qn))||norm(r.razon).includes(q)||String(r.folio)===txt;
- const filtradas=todas.filter(hit);const ver=f.todas?filtradas:filtradas.filter(r=>Math.round(r.pend)!==0);
+ let ver=todas.filter(hit);
+ if(f.tipo)ver=ver.filter(r=>String(r.tipo)===String(f.tipo));
+ if(f.tramo)ver=ver.filter(r=>tramoDe(r.dias)===f.tramo);
+ if(f.venc==='vencidas')ver=ver.filter(r=>r.diasVenc>0);
+ else if(f.venc==='porVencer')ver=ver.filter(r=>r.diasVenc<=0);
+ if(!f.todas)ver=ver.filter(r=>Math.round(r.pend)!==0);
+ const cta=esCob?claves().clientes:claves().proveedores;
+ const favor=Math.round(sum(ctacte(cta,tope),g=>Math.max(0,+g.favor||0)));
+ return {f,esCob,plazo,todas,ver,favor}}
+function agruparFacturas(ver){const m={};
+ for(const r of ver){const g=m[r.rut]||(m[r.rut]={rut:r.rut,razon:'',n:0,total:0,pagado:0,pend:0,vencido:0});
+  g.n++;g.total+=r.total;g.pagado+=r.pagado;g.pend+=r.pend;if(r.diasVenc>0)g.vencido+=r.pend;if(!g.razon&&r.razon)g.razon=r.razon}
+ return Object.values(m).sort((a,b)=>b.pend-a.pend)}
+function vFacturas(kind){const e=emp();const esCob=kind==='cobrar';const titulo=esCob?'Facturas por cobrar':'Facturas por pagar';
+ if(!e)return head(titulo,'')+noEmp();if(!ready())return loading();
+ const {f,todas,ver,favor}=facturasFiltradas(kind);
  const pend=sum(ver,r=>r.pend),total=sum(ver,r=>r.total),pag=sum(ver,r=>r.pagado);
- const venc=ver.filter(r=>r.pend>0&&r.dias>30);
- const favor=Math.round(sum(ctacte(esCob?claves().clientes:claves().proveedores,tope),g=>Math.max(0,+g.favor||0)));
+ const vencido=sum(ver,r=>r.diasVenc>0?r.pend:0);const nVenc=ver.filter(r=>r.diasVenc>0).length;
+ const tipos=[...new Set(todas.map(r=>String(r.tipo)))].sort();
  const ctrl=`<label class="fl">Desde<input type="date" id="fx-desde" data-fx="desde" data-fk="${kind}" value="${esc(f.desde)}"></label>`+
   `<label class="fl">Hasta<input type="date" id="fx-hasta" data-fx="hasta" data-fk="${kind}" value="${esc(f.hasta)}"></label>`+
-  `<input id="fx-q" data-fx="q" data-fk="${kind}" value="${esc(f.q)}" placeholder="RUT, razón social o folio" style="min-width:min(240px,100%)">`+
-  `<button class="btn sm ${f.todas?'':'pri'}" data-act="fx-todas" data-k="${kind}">${f.todas?'Viendo todas':'Solo pendientes'}</button>${csvBtn(kind)}`;
- const filas=ver.map(r=>`<tr><td class="c mono">${r.rut==='SINRUT'?'—':rutFmt(r.rut)}</td><td><b>${esc(r.razon||'—')}</b></td><td>${esc(CORTO[r.tipo]||r.tipo)}</td><td class="c">${esc(String(r.folio))}</td><td class="c">${fd(r.fecha)}</td><td class="n">${fz(r.total)}</td><td class="n">${fz(r.pagado)}</td><td class="n"><b>${fz(r.pend)}</b></td><td class="n">${r.dias}</td></tr>`).join('');
- const tabla=filas
-  ?`<div class="scroll"><table><thead><tr><th>RUT</th><th>Razón social</th><th>Tipo</th><th>Folio</th><th>Fecha</th><th class="n">Total</th><th class="n">${esCob?'Cobrado':'Pagado'}</th><th class="n">Pendiente</th><th class="n">Días</th></tr></thead><tbody>`+
-    filas+`<tr class="tot"><td colspan="5">Totales</td><td class="n">${fmt(total)}</td><td class="n">${fmt(pag)}</td><td class="n">${fmt(pend)}</td><td></td></tr></tbody></table></div>`
-  :`<div class="empty"><h3>Sin documentos que mostrar</h3><p>Revisa el rango de fechas o el filtro de solo pendientes.</p></div>`;
- return head(titulo,`${ver.length} documento(s) · del ${fd(f.desde)} al ${fd(f.hasta)} · el pendiente ya tiene aplicadas las notas de crédito y los abonos`,ctrl)+
-  `<div class="kpis"><div class="kpi"><span>${esCob?'Por cobrar':'Por pagar'}</span><b>${fmt(pend)}</b><small>${ver.length} documento(s)</small></div>`+
+  `<input id="fx-q" data-fx="q" data-fk="${kind}" value="${esc(f.q)}" placeholder="RUT, razón social o folio" style="min-width:min(200px,100%)">`+
+  `<label class="fl">Vence<select id="fx-venc" data-fx="venc" data-fk="${kind}"><option value="todas"${f.venc==='todas'?' selected':''}>Todas</option><option value="vencidas"${f.venc==='vencidas'?' selected':''}>Vencidas</option><option value="porVencer"${f.venc==='porVencer'?' selected':''}>Por vencer</option></select></label>`+
+  `<label class="fl">Plazo<input class="num" id="fx-plazo" data-fx="plazo" data-fk="${kind}" value="${esc(String(f.plazo))}" inputmode="numeric" style="width:64px" title="Días de plazo para el vencimiento"></label>`+
+  `<label class="fl">Tipo<select id="fx-tipo" data-fx="tipo" data-fk="${kind}"><option value=""${f.tipo===''?' selected':''}>Todos</option>${tipos.map(x=>`<option value="${x}"${String(f.tipo)===x?' selected':''}>${esc(CORTO[+x]||x)}</option>`).join('')}</select></label>`+
+  `<label class="fl">Antigüedad<select id="fx-tramo" data-fx="tramo" data-fk="${kind}"><option value=""${f.tramo===''?' selected':''}>Todas</option>${FX_TRAMOS.map(x=>`<option value="${esc(x)}"${f.tramo===x?' selected':''}>${esc(x)}</option>`).join('')}</select></label>`+
+  `<button class="btn sm ${f.agrupar?'pri':''}" data-act="fx-agrupar" data-k="${kind}">${f.agrupar?'Por cliente':'Ver por cliente'}</button>`+
+  `<button class="btn sm ${f.todas?'':'pri'}" data-act="fx-todas" data-k="${kind}">${f.todas?'Viendo todas':'Solo pendientes'}</button>`+
+  `<button class="btn sm ghost" data-act="fx-limpiar" data-k="${kind}" title="Volver a los filtros del período">Limpiar</button>`+csvBtn(kind);
+ const kpis=`<div class="kpis"><div class="kpi"><span>${esCob?'Por cobrar':'Por pagar'}</span><b>${fmt(pend)}</b><small>${ver.length} documento(s)</small></div>`+
+  `<div class="kpi"><span>Vencido</span><b${vencido?' style="color:var(--bad)"':''}>${fmt(vencido)}</b><small>${nVenc} documento(s) con más de ${f.plazo} días</small></div>`+
   `<div class="kpi"><span>Total documentos</span><b>${fmt(total)}</b></div>`+
-  `<div class="kpi"><span>Ya ${esCob?'cobrado':'pagado'}</span><b>${fmt(pag)}</b></div>`+
-  `<div class="kpi"><span>Con más de 30 días</span><b>${fmt(sum(venc,r=>r.pend))}</b><small>${venc.length} documento(s)</small></div></div>`+
+  `<div class="kpi"><span>Ya ${esCob?'cobrado':'pagado'}</span><b>${fmt(pag)}</b></div></div>`;
+ let tabla='';
+ if(f.agrupar){const gr=agruparFacturas(ver);
+  tabla=gr.length?`<div class="scroll"><table><thead><tr><th>RUT</th><th>Razón social</th><th class="n">Docs</th><th class="n">Total</th><th class="n">${esCob?'Cobrado':'Pagado'}</th><th class="n">Pendiente</th><th class="n">Vencido</th></tr></thead><tbody>`+
+   gr.map(g=>`<tr class="click" data-act="fx-ver" data-k="${kind}" data-rut="${esc(g.rut)}"><td class="c mono">${g.rut==='SINRUT'?'—':rutFmt(g.rut)}</td><td><b>${esc(g.razon||'—')}</b></td><td class="n">${g.n}</td><td class="n">${fz(g.total)}</td><td class="n">${fz(g.pagado)}</td><td class="n"><b>${fz(g.pend)}</b></td><td class="n">${g.vencido?`<b style="color:var(--bad)">${fz(g.vencido)}</b>`:''}</td></tr>`).join('')+
+   `<tr class="tot"><td colspan="3">Totales</td><td class="n">${fmt(total)}</td><td class="n">${fmt(pag)}</td><td class="n">${fmt(pend)}</td><td class="n">${fmt(vencido)}</td></tr></tbody></table></div>`
+  :`<div class="empty"><h3>Sin documentos que mostrar</h3><p>Revisa los filtros o apaga "Solo pendientes".</p></div>`;
+ }else{
+  const filas=ver.map(r=>`<tr><td class="c mono">${r.rut==='SINRUT'?'—':rutFmt(r.rut)}</td><td><b>${esc(r.razon||'—')}</b></td><td>${esc(CORTO[r.tipo]||r.tipo)}</td><td class="c">${esc(String(r.folio))}</td><td class="c">${fd(r.fecha)}</td><td class="c">${fd(r.vence)}${r.diasVenc>0?` <span class="pill bad">vencida</span>`:''}</td><td class="n">${fz(r.total)}</td><td class="n">${fz(r.pagado)}</td><td class="n"><b>${fz(r.pend)}</b></td><td class="n">${r.dias}</td></tr>`).join('');
+  tabla=filas?`<div class="scroll"><table><thead><tr><th>RUT</th><th>Razón social</th><th>Tipo</th><th>Folio</th><th>Fecha</th><th>Vence</th><th class="n">Total</th><th class="n">${esCob?'Cobrado':'Pagado'}</th><th class="n">Pendiente</th><th class="n">Días</th></tr></thead><tbody>`+
+   filas+`<tr class="tot"><td colspan="6">Totales</td><td class="n">${fmt(total)}</td><td class="n">${fmt(pag)}</td><td class="n">${fmt(pend)}</td><td></td></tr></tbody></table></div>`
+  :`<div class="empty"><h3>Sin documentos que mostrar</h3><p>Revisa los filtros o apaga "Solo pendientes".</p></div>`;
+ }
+ return head(titulo,`${ver.length} documento(s) · del ${fd(f.desde)} al ${fd(f.hasta)} · el pendiente ya tiene aplicadas las notas de crédito y los abonos`,ctrl)+kpis+
   `${favor?`<div class="note">Saldos a favor ${esCob?'de clientes':'de proveedores'}: <b>${fmt(favor)}</b> (notas de crédito o pagos que exceden lo facturado).</div>`:''}`+
   `<div class="sheet">${tabla}</div>`;
 }

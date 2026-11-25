@@ -90,15 +90,12 @@ function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=pe
   nombreFijo=`comprobante_${String(a.numero)}_${a.fecha}.pdf`;
   rep={title:'Comprobante contable',sub:`N° ${a.numero} · ${fd(a.fecha)}`,cols:[{h:'Cuenta y detalle',w:4.6},{h:'Debe',w:1.2,align:'right'},{h:'Haber',w:1.2,align:'right'}],rows,
    firmas:[['Confeccionado por',autor],['Revisado por',''],['Representante legal',e.repLegal||e.razon||'']]}}
- else if(w==='cobrar'||w==='pagar'){const f=fxDe(w);const esCob=w==='cobrar';
-  const filas=facturasDe(esCob?'ventas':'compras',f.hasta||rango()[1]).filter(r=>r.fecha>=f.desde&&r.fecha<=f.hasta);
-  const q=norm(f.q),qn=rutClean(f.q),txt=String(f.q||'').trim();
-  const ver=(f.todas?filas:filas.filter(r=>Math.round(r.pend)!==0)).filter(r=>!q||(qn.length>=3&&r.rut.includes(qn))||norm(r.razon).includes(q)||String(r.folio)===txt);
-  const rows=ver.map(r=>[r.rut==='SINRUT'?'':rutFmt(r.rut),r.razon,CORTO[r.tipo]||String(r.tipo),String(r.folio),fd(r.fecha),F(r.total),FZ(r.pagado),FZ(r.pend),String(r.dias)]);
-  rows.push({style:'tot',cells:['','Totales','','','',F(sum(ver,r=>r.total)),F(sum(ver,r=>r.pagado)),F(sum(ver,r=>r.pend)),'']});
+ else if(w==='cobrar'||w==='pagar'){const {f,esCob,plazo,ver}=facturasFiltradas(w);
+  const rows=ver.map(r=>[r.rut==='SINRUT'?'':rutFmt(r.rut),r.razon,CORTO[r.tipo]||String(r.tipo),String(r.folio),fd(r.fecha),fd(r.vence),F(r.total),FZ(r.pagado),FZ(r.pend),String(r.dias)]);
+  rows.push({style:'tot',cells:['','Totales','','','','',F(sum(ver,r=>r.total)),F(sum(ver,r=>r.pagado)),F(sum(ver,r=>r.pend)),'']});
   const cab=esCob?'Cobrado':'Pagado';
-  rep={title:esCob?'Facturas por cobrar':'Facturas por pagar',sub:`Del ${fd(f.desde)} al ${fd(f.hasta)} · el pendiente ya tiene aplicadas las notas de crédito y los abonos`,land:1,
-   cols:[{h:'RUT',w:1.1},{h:'Razón social',w:3.2},{h:'Tipo',w:.8},{h:'Folio',w:.9},{h:'Fecha',w:.9},{h:'Total',w:1.2,align:'right'},{h:cab,w:1.1,align:'right'},{h:'Pendiente',w:1.2,align:'right'},{h:'Días',w:.6,align:'right'}],rows}}
+  rep={title:esCob?'Facturas por cobrar':'Facturas por pagar',sub:`Del ${fd(f.desde)} al ${fd(f.hasta)} · vencimiento a ${plazo} días · el pendiente ya tiene aplicadas las notas de crédito y los abonos`,land:1,
+   cols:[{h:'RUT',w:1.1},{h:'Razón social',w:3},{h:'Tipo',w:.7},{h:'Folio',w:.9},{h:'Fecha',w:.9},{h:'Vence',w:.9},{h:'Total',w:1.2,align:'right'},{h:cab,w:1.1,align:'right'},{h:'Pendiente',w:1.2,align:'right'},{h:'Días',w:.6,align:'right'}],rows}}
  if(!rep)return;const bytes=pdfReport(rep);const name=nombreFijo||(w==='liq'?`liquidacion_${(((S.remu[ymSel()]||{}).liqs||[]).find(x=>x.tid===id)||{}).rut||''}_${ymSel()}.pdf`:nomArchivo(rep.title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_')).replace(/\.csv$/,'.pdf'));
  return saveFile(name,bytes)}
 
