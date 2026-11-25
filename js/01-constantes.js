@@ -34,4 +34,7 @@ const VIEWS=[
  ['Tesorería',[['banco','Conciliación bancaria']]],
  ['Reportes',[['diario','Libro diario'],['mayor','Libro mayor'],['balance','Balance 8 columnas'],['eeff','Estados financieros'],['cierre','Cierre y apertura'],['historial','Historial de cambios']]]
 ];
+/* Aviso de responsabilidad: va SOLO en los informes impresos (PDF), no en pantalla. */
+const AVISO_INFORME='Aviso: este informe se genera a partir de los registros contables ingresados por la empresa y no constituye una auditoría ni un informe de auditoría. La administración de la empresa es responsable de la veracidad e integridad de esos registros; el sistema no responde por errores u omisiones de la información registrada ni por las decisiones que se tomen a partir de este informe.';
+
 

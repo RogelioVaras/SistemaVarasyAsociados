@@ -22,7 +22,7 @@ class MiniPDF{constructor(land){this.W=land?841.89:595.28;this.H=land?595.28:841
   out+=`xref\n0 ${o.length+1}\n0000000000 65535 f \n`+offs.map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${o.length+1} /Root 1 0 R /Info << /Producer (Partida Doble) >> >>\nstartxref\n${xr}\n%%EOF`;
   const u=new Uint8Array(out.length);for(let i=0;i<out.length;i++)u[i]=out.charCodeAt(i)&255;return u}}
 const GRAY=[0.38,0.45,0.41];
-function pdfReport({title,sub,cols,rows,land,firmas}){const pdf=new MiniPDF(land);const M=36;const e=emp()||{};const usable=pdf.W-2*M;const tw=sum(cols,c=>c.w);const xs=[];let x=M;const ws=cols.map(c=>c.w/tw*usable);cols.forEach((c,i)=>{xs.push(x);x+=ws[i]});let y;
+function pdfReport({title,sub,cols,rows,land,firmas,nota}){const pdf=new MiniPDF(land);const M=36;const e=emp()||{};const usable=pdf.W-2*M;const tw=sum(cols,c=>c.w);const xs=[];let x=M;const ws=cols.map(c=>c.w/tw*usable);cols.forEach((c,i)=>{xs.push(x);x+=ws[i]});let y;
  const header=withHead=>{y=M;pdf.text(M,y+9,e.razon||'',{bold:1,size:11});pdf.text(M,y+21,`RUT ${rutFmt(e.rut)}${e.giro?' · '+e.giro:''}`,{size:7.5,color:GRAY});if(e.direccion)pdf.text(M,y+31,`${e.direccion}${e.comuna?', '+e.comuna:''}`,{size:7.5,color:GRAY});
   pdf.text(pdf.W-M,y+9,title,{bold:1,size:12,align:'right'});if(sub)pdf.text(pdf.W-M,y+21,sub,{size:7.5,align:'right',color:GRAY});y+=40;pdf.line(M,y,pdf.W-M,y,0.8,0.2);y+=6;
   if(withHead&&cols.some(c=>c.h)){pdf.rect(M,y,usable,15,[0.9,0.93,0.91]);cols.forEach((c,i)=>{if(!c.h)return;pdf.text(c.align==='right'?xs[i]+ws[i]-4:xs[i]+4,y+10,pdf.fit(c.h.toUpperCase(),ws[i]-6,6.5,1),{size:6.5,bold:1,align:c.align,color:GRAY})});y+=17}};
@@ -32,6 +32,8 @@ function pdfReport({title,sub,cols,rows,land,firmas}){const pdf=new MiniPDF(land
   if(st==='sub'||st==='tot')pdf.rect(M,y,usable,h,[0.95,0.965,0.955]);if(st==='tot')pdf.line(M,y,pdf.W-M,y,0.8,0.15);
   cells.forEach((v,i)=>{const c=cols[i];if(!c||v==null||v==='')return;const ind=r.indent&&c.align!=='right'?10:0;const cw=ws[i]-8-ind;const s=pdf.fit(v,cw,fs,st||r.bold?1:0);pdf.text(c.align==='right'?xs[i]+ws[i]-4:xs[i]+4+ind,y+h-4,s,{size:fs,bold:!!st||!!r.bold,align:c.align})});
   if(!st)pdf.line(M,y+h,pdf.W-M,y+h,0.3,0.86);y+=h}
+ if(nota){const size=6.6;const lins=[];let lin='';for(const w of String(nota).split(/\s+/)){const t=lin?lin+' '+w:w;if(pdf.tw(t,size,0)>usable&&lin){lins.push(lin);lin=w}else lin=t}if(lin)lins.push(lin);
+  if(y+lins.length*(size+2.5)+10>bottom){pdf.newPage();header(false)}y+=8;for(const l of lins){pdf.text(M,y+size,l,{size,color:GRAY});y+=size+2.5}}
  if(firmas&&firmas.length){if(y+80>bottom){pdf.newPage();header(false)}y+=60;const fw=usable/firmas.length;firmas.forEach((f,i)=>{const cx=M+fw*i+fw/2;pdf.line(cx-75,y,cx+75,y,0.6,0.25);pdf.text(cx,y+11,f[0],{size:8,bold:1,align:'center'});if(f[1])pdf.text(cx,y+21,f[1],{size:7.5,align:'center',color:GRAY})})}
  const n=pdf.pages.length;pdf.pages.forEach((pg,i)=>{pdf.c=pg;pdf.text(M,pdf.H-M+8,`Emitido el ${fd(hoy())} con Partida Doble`,{size:6.5,color:GRAY});pdf.text(pdf.W-M,pdf.H-M+8,`Página ${i+1} de ${n}`,{size:6.5,align:'right',color:GRAY})});
  return pdf.out()}
@@ -47,7 +49,7 @@ function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=pe
  else if(w==='balance'){const {rows:B,T,res}=balance8();const k=['d','h','sd','sa','ac','pa','pe','ga'];const rows=B.map(r=>[r.c,r.n,...k.map(x=>FZ(r[x]))]);rows.push({style:'sub',cells:['','Sumas',...k.map(x=>F(T[x]))]});
   rows.push(['',res>=0?'Utilidad del ejercicio':'Pérdida del ejercicio','','','','',res<0?F(-res):'',res>0?F(res):'',res>0?F(res):'',res<0?F(-res):'']);
   rows.push({style:'tot',cells:['','Totales',F(T.d),F(T.h),F(T.sd),F(T.sa),F(T.ac+(res<0?-res:0)),F(T.pa+(res>0?res:0)),F(T.pe+(res>0?res:0)),F(T.ga+(res<0?-res:0))]});
-  rep={title:'Balance de 8 columnas',sub:`Del 01-01-${S.anio} al ${fd(R[1])}`,land:1,cols:[{h:'Código',w:.8},{h:'Cuenta',w:2.6},...['Debe','Haber','Deudor','Acreedor','Activo','Pasivo','Pérdida','Ganancia'].map(h=>({h,w:1,align:'right'}))],rows,firmas:[['Representante legal',e.repLegal||''],['Contador','']]}}
+  rep={title:'Balance de 8 columnas',sub:`Del 01-01-${S.anio} al ${fd(R[1])}`,land:1,cols:[{h:'Código',w:.8},{h:'Cuenta',w:2.6},...['Debe','Haber','Deudor','Acreedor','Activo','Pasivo','Pérdida','Ganancia'].map(h=>({h,w:1,align:'right'}))],rows,firmas:[['Representante legal',e.repLegal||''],['Contador','']],nota:AVISO_INFORME}}
  else if(w==='eeff'){const {A,M,prev,bal,cuentasG}=eeffData();const tot=(map,g,d)=>map?sum(cuentasG(g),c=>bal(map,c.codigo,d)):0;const colM=!!M;const rows=[{style:'title',cells:['Estado de resultados']}];
   const sec=(g,t,d)=>{rows.push({style:'sub',cells:[t,colM?F(tot(M,g,d)):'',F(tot(A,g,d))]});cuentasG(g).forEach(c=>rows.push({indent:1,cells:[`${c.codigo} ${c.nombre}`,colM?F(bal(M,c.codigo,d)):'',F(bal(A,c.codigo,d))]}))};
   const ing=tot(A,'ING',0),cos=tot(A,'COS',1),gas=tot(A,'GAS',1),imp=tot(A,'IMP',1),mi=tot(M,'ING',0),mc=tot(M,'COS',1),mg=tot(M,'GAS',1),mim=tot(M,'IMP',1);
@@ -57,7 +59,7 @@ function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=pe
   bs('AC','Activo corriente',1);bs('ANC','Activo no corriente',1);rows.push({style:'tot',cells:['Total activos','',F(tot(A,'AC',1)+tot(A,'ANC',1))]});bs('PC','Pasivo corriente',0);bs('PNC','Pasivo no corriente',0);
   const ant=prev.haber-prev.debe;rows.push({style:'sub',cells:['Patrimonio','',F(tot(A,'PAT',0)+ant+resA)]});cuentasG('PAT').forEach(c=>rows.push({indent:1,cells:[`${c.codigo} ${c.nombre}`,'',F(bal(A,c.codigo,0))]}));if(Math.round(ant))rows.push({indent:1,cells:['Resultados de ejercicios anteriores sin cerrar','',F(ant)]});rows.push({indent:1,cells:['Resultado del ejercicio','',F(resA)]});
   rows.push({style:'tot',cells:['Total pasivos y patrimonio','',F(tot(A,'PC',0)+tot(A,'PNC',0)+tot(A,'PAT',0)+ant+resA)]});
-  rep={title:'Estados financieros',sub:`Al ${fd(R[1])}`,cols:[{h:'Concepto',w:4.5},{h:colM?MESES[S.mes-1]:'',w:1.2,align:'right'},{h:'Acumulado',w:1.3,align:'right'}],rows,firmas:[['Representante legal',e.repLegal?`${e.repLegal}${e.repRut?' · '+rutFmt(e.repRut):''}`:''],['Contador','']]}}
+  rep={title:'Estados financieros',sub:`Al ${fd(R[1])}`,cols:[{h:'Concepto',w:4.5},{h:colM?MESES[S.mes-1]:'',w:1.2,align:'right'},{h:'Acumulado',w:1.3,align:'right'}],rows,firmas:[['Representante legal',e.repLegal?`${e.repLegal}${e.repRut?' · '+rutFmt(e.repRut):''}`:''],['Contador','']],nota:AVISO_INFORME}}
  else if(w==='f29'){const x=ivaMes(ymSel());const L=(c,t,n,m,st)=>({style:st,cells:[c,t,n===''||n==null?'':String(n),m===''?'':F(m)]});
   const rows=[{style:'title',cells:['Débitos']},L('503 / 502','Facturas emitidas',x.V.f33.n,x.V.f33.iva),L('110 / 111','Boletas',x.V.b39.n,x.V.b39.iva),L('512 / 513','Notas de débito emitidas',x.V.nd.n,x.V.nd.iva),L('509 / 510','Notas de crédito emitidas',x.V.nc.n,x.V.nc.iva),L('538','Total débitos','',x.debito,'tot'),
    {style:'title',cells:['Créditos']},L('519 / 520','Facturas recibidas del giro',x.C.f33.n,x.C.f33.iva),L('531 / 532','Notas de débito recibidas',x.C.nd.n,x.C.nd.iva),L('527 / 528','Notas de crédito recibidas',x.C.nc.n,x.C.nc.iva)];
