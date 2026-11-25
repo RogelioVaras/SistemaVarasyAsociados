@@ -1,6 +1,6 @@
 /* Partida Doble · Vistas: libro diario, libro mayor y libros de compras y ventas. */
 function vEditor(){const ed=S.ed;const t=edTotals();
- return `<div class="sheet" id="editor"><div class="sheet-h"><h2>${ed.id?`Editar asiento N°${ed.numero}`:'Nuevo asiento'}</h2><span class="sub">Partida doble: el total del debe debe igualar al haber</span></div><div class="sheet-b">
+ return `<div class="sheet" id="editor"><div class="sheet-h"><h2>${ed.id?`Corregir comprobante N°${ed.numero}`:'Nuevo comprobante contable'}</h2><span class="sub">Partida doble: el total del debe debe igualar al haber</span></div><div class="sheet-b">
  <div class="form"><label>Fecha<input type="date" id="ed-fecha" data-ed="fecha" value="${esc(ed.fecha)}"></label>
  <label>Tipo<select id="ed-tipo" data-ed="tipo">${['Ingreso','Egreso','Traspaso','Apertura','Ajuste','Cierre'].map(x=>`<option ${ed.tipo===x?'selected':''}>${x}</option>`).join('')}</select></label>
  <label class="wide">Glosa<input id="ed-glosa" data-ed="glosa" value="${esc(ed.glosa)}" placeholder="Ej: Pago arriendo oficina octubre"></label></div>
@@ -10,7 +10,7 @@ function vEditor(){const ed=S.ed;const t=edTotals();
  </tbody></table></div>
  <div class="row" style="margin-top:10px;justify-content:space-between"><button class="btn sm" data-act="ed-addl">Agregar línea</button>
  <div class="cuadre" id="ed-tot"><span>Debe <b>${fmt(t.d)}</b></span><span>Haber <b>${fmt(t.h)}</b></span>${t.ok?'<span class="pill ok">Cuadrado</span>':`<span class="pill bad">Diferencia ${fmt(t.d-t.h)}</span>`}</div></div>
- <div class="row" style="margin-top:14px"><button class="btn pri" data-act="ed-save" id="ed-save" ${t.ok?'':'disabled'}>Guardar asiento</button><button class="btn ghost" data-act="ed-cancel">Cancelar</button></div>
+ <div class="row" style="margin-top:14px"><button class="btn pri" data-act="ed-save" id="ed-save" ${t.ok?'':'disabled'}>Guardar comprobante</button><button class="btn ghost" data-act="ed-cancel">Cancelar</button>${ed.id?confirmBtn('delAs:'+ed.id,'Eliminar comprobante'):''}</div>
  </div></div>`}
 
 /* Carga masiva: se pega el listado (o se abre un CSV) y la app muestra la vista previa antes de guardar. */
@@ -23,17 +23,30 @@ function vMasivoDiario(){
  <div id="mas-prev" style="margin-top:10px">${masPreviewHTML()}</div>
  <div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn pri" id="mas-btn" data-act="mas-run" ${r.errores.length||!r.asientos.length?'disabled':''}>${r.asientos.length?`Importar ${r.asientos.length} asiento(s)`:'Importar asientos'}</button><button class="btn ghost" data-act="mas-cerrar">Cerrar</button><span class="muted">${S.ro?'Tu rol es de solo lectura: no se puede guardar.':''}</span></div>
  </div></div>`}
+/* Generar comprobante contable: pantalla de emisión. Aquí se crea, se corrige o se
+   carga en masa un comprobante. Los libros diario y mayor son reportes (menú Reportes). */
+function vComprobante(){const e=emp();if(!e)return head('Generar comprobante contable','')+noEmp();if(!ready())return loading();
+ if(!S.ed)S.ed=blankEd();
+ const R=rango();const lista=asientos().filter(a=>enRango(a.fecha,R)).slice().reverse();
+ const opciones=lista.slice(0,60).map(a=>`<option value="${a.id}">N°${a.numero} · ${fd(a.fecha)} · ${esc(String(a.glosa||'').slice(0,44))}</option>`).join('');
+ return head('Generar comprobante contable',`${esc(perTxt())} · ${lista.length} comprobante(s) en el período`,
+   `<select id="comp-sel" data-top="comp" style="min-width:min(300px,100%)"><option value="">Corregir uno existente…</option>${opciones}</select>`+
+   `<button class="btn" data-act="mas-toggle">${S.showImp.diario?'Cerrar carga en masa':'Registrar en masa'}</button>`+
+   `<button class="btn pri" data-act="ed-new">Nuevo comprobante</button>`)+
+  vEditor()+(S.showImp.diario?vMasivoDiario():'');
+}
+
 function vDiario(){const e=emp();if(!e)return head('Libro diario','')+noEmp();if(!ready())return loading();
  const R=rango();const q=norm(S.q);const qn=rutClean(S.q);const qm=Math.round(pn(S.q));
  const hit=a=>!q||norm(a.glosa).includes(q)||(a.lineas||[]).some(l=>(qn.length>=3&&rutClean(l.rut).includes(qn))||String(l.ref||'')===S.q.trim()||(qm&&(Math.round(l.debe)===qm||Math.round(l.haber)===qm))||norm(ctaNom(l.cuenta)).includes(q)||l.cuenta===S.q.trim());
  const lista=asientos().filter(a=>enRango(a.fecha,R)&&hit(a));const D=sum(lista,a=>sum(a.lineas,l=>l.debe)),H=sum(lista,a=>sum(a.lineas,l=>l.haber));
- return head('Libro diario',`${esc(perTxt())} · ${lista.length} asientos${cerrado()?` · cerrado hasta ${cerradoTxt()}`:''}`,`<input id="diario-q" data-q="1" value="${esc(S.q)}" placeholder="Buscar glosa, cuenta, RUT o monto" style="min-width:min(260px,100%)">${csvBtn('diario')}${S.ed?'':`<button class="btn" data-act="mas-toggle">${S.showImp.diario?'Cerrar carga masiva':'Registrar en masa'}</button><button class="btn pri" data-act="ed-new">Nuevo asiento</button>`}`)+(S.ed?vEditor():'')+(S.showImp.diario&&!S.ed?vMasivoDiario():'')+
+ return head('Libro diario',`${esc(perTxt())} · ${lista.length} asientos${cerrado()?` · cerrado hasta ${cerradoTxt()}`:''}`,`<input id="diario-q" data-q="1" value="${esc(S.q)}" placeholder="Buscar glosa, cuenta, RUT o monto" style="min-width:min(260px,100%)">${csvBtn('diario')}`)+
  `<div class="sheet">${lista.length?`<div class="scroll"><table><thead><tr><th>N° / Cuenta</th><th>Fecha / Detalle</th><th class="n">Debe</th><th class="n">Haber</th><th></th></tr></thead><tbody>
  ${lista.map(a=>{const kind=a.origen&&a.origen.kind;const lock=bloq(a.fecha);const canEdit=!lock&&(!kind||['banco','pago','saldos'].includes(kind));const canDel=!lock&&!['compras','ventas'].includes(kind);
- const au=autorTxt(a);return `<tr class="ah"><td>${a.numero}</td><td><b>${esc(a.glosa)}</b> <span class="muted">· ${fd(a.fecha)} · ${esc(a.tipo||'')}</span> ${kind?`<span class="pill acc">${ORIGEN_TXT[kind]||kind}</span>`:''} ${cuadra(a)?'':'<span class="pill bad">Descuadrado</span>'}${au?`<br><span class="autor">${au}</span>`:''}</td><td></td><td></td><td><div class="row" style="justify-content:flex-end">${lock?'<span class="pill">Período cerrado</span>':''}${canEdit?`<button class="btn sm" data-act="ed-edit" data-id="${a.id}">Editar</button>`:''}${canDel?confirmBtn('delAs:'+a.id,'Eliminar'):''}</div></td></tr>
+ const au=autorTxt(a);return `<tr class="ah"><td>${a.numero}</td><td><b>${esc(a.glosa)}</b> <span class="muted">· ${fd(a.fecha)} · ${esc(a.tipo||'')}</span> ${kind?`<span class="pill acc">${ORIGEN_TXT[kind]||kind}</span>`:''} ${cuadra(a)?'':'<span class="pill bad">Descuadrado</span>'}${au?`<br><span class="autor">${au}</span>`:''}</td><td></td><td></td><td>${lock?'<span class="pill">Período cerrado</span>':''}</td></tr>
  ${(a.lineas||[]).map(l=>`<tr class="indent"><td class="c">${esc(l.cuenta)}</td><td>${esc(ctaNom(l.cuenta))}${l.rut?` <span class="muted mono">· ${rutFmt(l.rut)}${l.ref?' doc '+esc(l.ref):''}</span>`:''}${l.glosa?` <span class="muted">· ${esc(l.glosa)}</span>`:''}</td><td class="n">${fz(l.debe)}</td><td class="n">${fz(l.haber)}</td><td></td></tr>`).join('')}`}).join('')}
  <tr class="tot"><td></td><td>Totales del período</td><td class="n">${fmt(D)}</td><td class="n">${fmt(H)}</td><td>${Math.round(D)===Math.round(H)?'<span class="pill ok">Cuadra</span>':'<span class="pill bad">No cuadra</span>'}</td></tr>
- </tbody></table></div>`:`<div class="empty"><h3>${S.q?'Ningún asiento coincide con la búsqueda':`Sin asientos en ${esc(perTxt())}`}</h3><p>${S.q?'Prueba con otra palabra, un RUT o un monto exacto.':'Usa “Nuevo asiento” o centraliza documentos desde los libros de compras y ventas.'}</p></div>`}</div>`}
+ </tbody></table></div>`:`<div class="empty"><h3>${S.q?'Ningún asiento coincide con la búsqueda':`Sin asientos en ${esc(perTxt())}`}</h3><p>${S.q?'Prueba con otra palabra, un RUT o un monto exacto.':'Crea comprobantes en “Generar comprobante contable” o centraliza documentos desde los libros de compras y ventas.'}</p></div>`}</div>`}
 
 function vMayor(){const e=emp();if(!e)return head('Libro mayor','')+noEmp();if(!ready())return loading();
  const R=rango();const usadas=[...new Set(asientos().filter(a=>a.fecha<=R[1]).flatMap(a=>(a.lineas||[]).map(l=>l.cuenta)))].sort();

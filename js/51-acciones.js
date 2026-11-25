@@ -52,7 +52,7 @@ const A={
   if(!r.asientos.length){toast('No hay asientos que importar.','err');return}
   S.busy=true;
   try{const g=await guardarAsientosMasivos(r.asientos);S.imp.diario='';S.showImp.diario=false;
-   toast(`${g.length} asiento(s) registrados, del N°${g[0].numero} al N°${g[g.length-1].numero}`)}
+   toast(`${g.length} comprobante(s) registrados, del N°${g[0].numero} al N°${g[g.length-1].numero}`)}
   catch(e){}
   finally{S.busy=false}},
  'ed-edit':t=>{const a=asientos().find(x=>x.id===t.dataset.id);if(!a)return;S.ed={...clone(a),_oldYm:a.fecha.slice(0,7),lineas:a.lineas.map(l=>({cuenta:l.cuenta,debe:l.debe?String(l.debe):'',haber:l.haber?String(l.haber):'',glosa:l.glosa||'',rut:l.rut?rutFmt(l.rut):'',ref:l.ref||''}))};window.scrollTo(0,0)},
@@ -66,7 +66,7 @@ const A={
   if(L.length<2){toast('Un asiento necesita al menos dos líneas.','err');return}if(sum(L,l=>l.debe)!==sum(L,l=>l.haber)){toast('El asiento no cuadra.','err');return}
   const keepNum=ed.numero&&ed._oldYm&&ed._oldYm.slice(0,4)===ed.fecha.slice(0,4);
   const a={id:ed.id||uid(),numero:keepNum?ed.numero:nextNum(ed.fecha.slice(0,4)),fecha:ed.fecha,tipo:ed.tipo,glosa:ed.glosa.trim(),lineas:L,...(ed.origen?{origen:ed.origen}:{})};
-  const old=ed._oldYm;S.ed=null;await guardarAsiento(a,old);toast(`Asiento N°${a.numero} guardado`)},
+  const old=ed._oldYm;S.ed=null;await guardarAsiento(a,old);toast(`Comprobante N°${a.numero} guardado`)},
  'doc-new':t=>{S.f[t.dataset.k]=docFormBlank(t.dataset.k)},
  'hon-new':()=>{const [d,h]=rango();const f=hoy();S.f.hon={id:null,fecha:enRango(f,[d,h])?f:d,numero:'',rut:'',nombre:'',bruto:'',retenida:'1',cuenta:claves().honGasto}},
  'hon-edit':t=>{const h=honDe().find(x=>x.id===t.dataset.id);if(!h)return;S.f.hon={...clone(h),rut:rutFmt(h.rut),bruto:String(h.bruto),retenida:h.retenida===false?'0':'1',_oldYm:h._ym};window.scrollTo(0,0)},
@@ -210,7 +210,7 @@ const A={
 const CONFIRM={
  delEmp:async id=>{if(!soloDueno())return;const was=S.empId===id;if(S.local){const st=lsLoad();Object.keys(st).filter(p=>p.startsWith(`empresas/${id}/`)).forEach(p=>delete st[p]);lsPut('_',null)}if(S.db){for(const k of ['diario','rcv','banco']){try{const s=await S.db.collection(`empresas/${id}/${k}`).get();for(const d of s.docs)await enqueue(`empresas/${id}/${k}/${d.id}`,()=>S.db.doc(`empresas/${id}/${k}/${d.id}`).delete())}catch(e){toast(errMsg(e),'err');return}}}
   await del(`empresas/${id}`);if(was)selectEmp(null);toast('Empresa eliminada')},
- delAs:async id=>{await borrarAsiento(id);toast('Asiento eliminado')},
+ delAs:async id=>{await borrarAsiento(id);toast('Comprobante eliminado')},
  delDoc:async x=>{const [k,id]=x.split(':');await borrarDoc(k,id);toast('Documento y su asiento eliminados')},
  delCta:async cod=>{await saveEmp({plan:clone(plan()).filter(c=>c.codigo!==cod)});toast('Cuenta eliminada')},
  delAj:async id=>{const y=String(S.anio);const o=clone(S.renta[y]||{});o.ajustes=(o.ajustes||[]).filter(a=>a.id!==id);await putE(`renta/${y}`,o)},

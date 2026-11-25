@@ -28,10 +28,10 @@ const REGIMENES=['14 D N°3 Pro Pyme General','14 D N°8 Pro Pyme Transparente',
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const VIEWS=[
  ['Administración',[['empresas','Empresas'],['usuarios','Usuarios'],['cartera','Panel de cartera'],['plan','Plan de cuentas'],['calendario','Calendario'],['resumen','Resumen']]],
- ['Registros',[['diario','Libro diario'],['mayor','Libro mayor'],['compras','Libro de compras'],['ventas','Libro de ventas'],['honorarios','Honorarios'],['activo','Activo fijo'],['ctacte','Cuentas corrientes']]],
+ ['Registros',[['comprobante','Generar comprobante contable'],['compras','Libro de compras'],['ventas','Libro de ventas'],['honorarios','Honorarios'],['activo','Activo fijo'],['ctacte','Cuentas corrientes']]],
  ['Impuestos',[['iva','IVA y F29'],['renta','Renta anual']]],
  ['Personal',[['trabajadores','Trabajadores'],['remu','Remuneraciones']]],
  ['Tesorería',[['banco','Conciliación bancaria']]],
- ['Reportes',[['balance','Balance 8 columnas'],['eeff','Estados financieros'],['cierre','Cierre y apertura'],['historial','Historial de cambios']]]
+ ['Reportes',[['diario','Libro diario'],['mayor','Libro mayor'],['balance','Balance 8 columnas'],['eeff','Estados financieros'],['cierre','Cierre y apertura'],['historial','Historial de cambios']]]
 ];
 
