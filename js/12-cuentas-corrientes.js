@@ -14,6 +14,29 @@ function ctacte(cta,hasta){const deud=esDeudora(cta);const docMap={};for(const k
   for(const ab of abonos)for(const cg of cargos){if(ab.rest<=0)break;apl(ab,cg)}
   g.cargos=cargos;g.abonos=abonos;g.saldo=sum(g.mov,m=>m.v);g.pend=cargos.filter(c=>c.pend>0);g.favor=sum(abonos,a=>a.rest);out.push(g)}
  return out.sort((a,b)=>b.saldo-a.saldo)}
+/* Facturas por cobrar (ventas) o por pagar (compras): una fila por documento registrado,
+   con lo pagado y lo pendiente según los mismos cargos y abonos de cuentas corrientes.
+   Las notas de crédito no generan fila: ya rebajan el pendiente de la factura que abonan.
+   Un documento que todavía no se ha centralizado aparece completo como pendiente. */
+function facturasDe(kind,hasta){
+ const cta=kind==='ventas'?claves().clientes:claves().proveedores;
+ const porRut={};ctacte(cta,hasta).forEach(g=>{porRut[g.rut]=g});
+ const refsContadas=new Set();Object.values(porRut).forEach(g=>(g.cargos||[]).forEach(c=>refsContadas.add(String(c.ref))));
+ const out=[];
+ /* La antigüedad se mide hasta hoy, salvo que el informe se corte antes. */
+ const ref=hasta&&hasta>hoy()?hoy():hasta;
+ for(const d of docsDe(kind)){
+  if(+d.tipo===61)continue;
+  const rut=rutClean(d.rut)||'SINRUT';const folio=String(d.folio==null?'':d.folio);
+  const g=porRut[rut];const cargo=g&&g.cargos?g.cargos.find(c=>String(c.ref)===folio):null;
+  if(!cargo&&refsContadas.has(folio))continue;
+  const bruto=Math.abs(Math.round(+d.total||0));
+  const pend=cargo?Math.max(0,Math.round(cargo.pend)):bruto;
+  out.push({id:d.id,rut,razon:(d.razon||'').trim(),tipo:+d.tipo,folio,fecha:d.fecha,
+   total:bruto,pagado:bruto-pend,pend,dias:dias(d.fecha,ref),centralizada:!!cargo});
+ }
+ return out;
+}
 const dias=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
 function buckets(pend,hasta){const b=[0,0,0,0];for(const c of pend){const d=dias(c.fecha,hasta);b[d<=30?0:d<=60?1:d<=90?2:3]+=c.pend}return b}
 

@@ -11,6 +11,7 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.dataset.ed){S.ed[t.dataset.ed]=t.value;return}
  if(t.dataset.el){const [i,k]=t.dataset.el.split('.');const l=S.ed.lineas[+i];if(k==='cuenta'){l._txt=t.value;l.cuenta=parseCta(t.value)}else{l[k]=t.value;if(k==='debe'&&t.value)l.haber='';if(k==='haber'&&t.value)l.debe='';const other=document.getElementById(`el-${i}-${k==='debe'?'h':'d'}`);if(other&&t.value)other.value=''}updEdTot();return}
  if(t.dataset.imp){S.imp[t.dataset.imp]=t.value;if(t.dataset.imp==='diario')masPintar();return}
+ if(t.dataset.fx){const k=t.dataset.fk;fxDe(k)[t.dataset.fx]=t.value;render();return}
  if(t.dataset.q){S.q=t.value;render();return}
  if(t.dataset.qh){S.qh=t.value;render()}});
 document.addEventListener('change',async e=>{const t=e.target;
@@ -20,6 +21,7 @@ document.addEventListener('change',async e=>{const t=e.target;
  if(t.id==='emp-reprut'){const v=rutFmt(t.value);t.value=v;if(S.f.emp)S.f.emp.repRut=v;return}
  if(t.dataset.el&&t.dataset.el.endsWith('.cuenta')){const l=S.ed.lineas[+t.dataset.el.split('.')[0]];if(l.cuenta)t.value=ctaTxt(l.cuenta);else if(t.value)toast('No encontré esa cuenta en el plan. Escribe el código o elige de la lista.','err');render();return}
  if(t.dataset.top){const v=t.value;if(t.dataset.top==='comp'){const a=asientos().find(x=>x.id===v);if(a)A['ed-edit']({dataset:{id:a.id}});render();return}if(t.dataset.top==='emp'){selectEmp(v||null);return}if(t.dataset.top==='anio'){S.anio=+v;lsSet('pd.anio',v)}if(t.dataset.top==='mes'){S.mes=+v;lsSet('pd.mes',v)}if(t.dataset.top==='mayor')S.mayorCta=v;if(t.dataset.top==='banco'){S.bancoCta=v;S.sel={mov:null,lin:null}}if(t.dataset.top==='cc'){S.ccCta=v;S.ccRut=null;S.f.pago=null}S.ed=null;render();return}
+ if(t.dataset.fx){const k=t.dataset.fk;fxDe(k)[t.dataset.fx]=t.value;render();return}
  if(t.dataset.file==='backup'){const file=t.files&&t.files[0];if(!file)return;const fr=new FileReader();fr.onload=()=>{restaurar(String(fr.result)).catch(()=>{}).then(render)};fr.readAsText(file,'UTF-8');t.value='';return}
  if(t.dataset.file){const k=t.dataset.file;const file=t.files&&t.files[0];if(!file)return;const rd=enc=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=()=>r('');fr.readAsText(file,enc)});let txt=await rd('UTF-8');if(txt.includes('\uFFFD'))txt=await rd('ISO-8859-1');S.imp[k]=txt;render();toast(`Archivo cargado: ${parseCSV(txt).length} filas`);return}
  const s=t.dataset.save;if(!s)return;

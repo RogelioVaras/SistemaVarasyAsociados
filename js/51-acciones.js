@@ -44,6 +44,8 @@ const A={
  'emp-demo':async()=>{try{const r=await fetch('datos-de-prueba/respaldo_prueba_comercial_los_aromos.json');
    if(!r.ok)throw new Error('HTTP '+r.status);await restaurar(await r.text())}
   catch(e){toast('No se pudo cargar el ejemplo. Usa Restaurar respaldo con el archivo de la carpeta datos-de-prueba.','err')}},
+ 'fx-todas':t=>{const k=t.dataset.k;const f=fxDe(k);f.todas=!f.todas},
+ 'fx-limpiar':t=>{const k=t.dataset.k;const R=rango();S.fx=S.fx||{};S.fx[k]={desde:R[0],hasta:R[1],q:'',todas:false}},
  'ed-new':()=>{S.ed=blankEd()},
  /* Carga masiva de asientos desde un listado pegado o un CSV (Libro diario). */
  'mas-toggle':()=>{S.showImp.diario=!S.showImp.diario},

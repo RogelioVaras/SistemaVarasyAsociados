@@ -38,3 +38,32 @@ function vEeff(){const e=emp();if(!e)return head('Estados financieros','')+noEmp
  <tr class="tot"><td>Total pasivos y patrimonio</td><td class="n">${fmt(tPC+tPNC+tPatr)}</td></tr>
  </tbody></table></div></div></div>`}
 
+/* ---- Facturas por cobrar y por pagar: una fila por documento registrado, con filtros ---- */
+function fxDe(kind){S.fx=S.fx||{};if(!S.fx[kind]){const R=rango();S.fx[kind]={desde:R[0],hasta:R[1],q:'',todas:false}}return S.fx[kind]}
+function vFacturas(kind){const e=emp();const esCob=kind==='cobrar';const titulo=esCob?'Facturas por cobrar':'Facturas por pagar';
+ if(!e)return head(titulo,'')+noEmp();if(!ready())return loading();
+ const f=fxDe(kind);const tope=f.hasta||rango()[1];
+ const todas=facturasDe(esCob?'ventas':'compras',tope).filter(r=>r.fecha>=f.desde&&r.fecha<=f.hasta);
+ const q=norm(f.q),qn=rutClean(f.q),txt=String(f.q||'').trim();
+ const hit=r=>!q||(qn.length>=3&&r.rut.includes(qn))||norm(r.razon).includes(q)||String(r.folio)===txt;
+ const filtradas=todas.filter(hit);const ver=f.todas?filtradas:filtradas.filter(r=>Math.round(r.pend)!==0);
+ const pend=sum(ver,r=>r.pend),total=sum(ver,r=>r.total),pag=sum(ver,r=>r.pagado);
+ const venc=ver.filter(r=>r.pend>0&&r.dias>30);
+ const favor=Math.round(sum(ctacte(esCob?claves().clientes:claves().proveedores,tope),g=>Math.max(0,+g.favor||0)));
+ const ctrl=`<label class="fl">Desde<input type="date" id="fx-desde" data-fx="desde" data-fk="${kind}" value="${esc(f.desde)}"></label>`+
+  `<label class="fl">Hasta<input type="date" id="fx-hasta" data-fx="hasta" data-fk="${kind}" value="${esc(f.hasta)}"></label>`+
+  `<input id="fx-q" data-fx="q" data-fk="${kind}" value="${esc(f.q)}" placeholder="RUT, razón social o folio" style="min-width:min(240px,100%)">`+
+  `<button class="btn sm ${f.todas?'':'pri'}" data-act="fx-todas" data-k="${kind}">${f.todas?'Viendo todas':'Solo pendientes'}</button>${csvBtn(kind)}`;
+ const filas=ver.map(r=>`<tr><td class="c mono">${r.rut==='SINRUT'?'—':rutFmt(r.rut)}</td><td><b>${esc(r.razon||'—')}</b></td><td>${esc(CORTO[r.tipo]||r.tipo)}</td><td class="c">${esc(String(r.folio))}</td><td class="c">${fd(r.fecha)}</td><td class="n">${fz(r.total)}</td><td class="n">${fz(r.pagado)}</td><td class="n"><b>${fz(r.pend)}</b></td><td class="n">${r.dias}</td></tr>`).join('');
+ const tabla=filas
+  ?`<div class="scroll"><table><thead><tr><th>RUT</th><th>Razón social</th><th>Tipo</th><th>Folio</th><th>Fecha</th><th class="n">Total</th><th class="n">${esCob?'Cobrado':'Pagado'}</th><th class="n">Pendiente</th><th class="n">Días</th></tr></thead><tbody>`+
+    filas+`<tr class="tot"><td colspan="5">Totales</td><td class="n">${fmt(total)}</td><td class="n">${fmt(pag)}</td><td class="n">${fmt(pend)}</td><td></td></tr></tbody></table></div>`
+  :`<div class="empty"><h3>Sin documentos que mostrar</h3><p>Revisa el rango de fechas o el filtro de solo pendientes.</p></div>`;
+ return head(titulo,`${ver.length} documento(s) · del ${fd(f.desde)} al ${fd(f.hasta)} · el pendiente ya tiene aplicadas las notas de crédito y los abonos`,ctrl)+
+  `<div class="kpis"><div class="kpi"><span>${esCob?'Por cobrar':'Por pagar'}</span><b>${fmt(pend)}</b><small>${ver.length} documento(s)</small></div>`+
+  `<div class="kpi"><span>Total documentos</span><b>${fmt(total)}</b></div>`+
+  `<div class="kpi"><span>Ya ${esCob?'cobrado':'pagado'}</span><b>${fmt(pag)}</b></div>`+
+  `<div class="kpi"><span>Con más de 30 días</span><b>${fmt(sum(venc,r=>r.pend))}</b><small>${venc.length} documento(s)</small></div></div>`+
+  `${favor?`<div class="note">Saldos a favor ${esCob?'de clientes':'de proveedores'}: <b>${fmt(favor)}</b> (notas de crédito o pagos que exceden lo facturado).</div>`:''}`+
+  `<div class="sheet">${tabla}</div>`;
+}
