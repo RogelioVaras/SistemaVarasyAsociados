@@ -9,6 +9,9 @@
 
 const SB={client:null,session:null,roles:{}};
 const sbConfigurado=()=>{const c=window.PD_CONFIG||{};return !!(c.supabaseUrl&&c.supabaseAnonKey)};
+/* El registro público se cierra con registroAbierto: false en config.js; si no está
+   definido se asume abierto, para no romper instalaciones antiguas. */
+const registroAbierto=()=>{const c=window.PD_CONFIG||{};return c.registroAbierto!==false};
 
 function cargarScript(src){return new Promise((ok,mal)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>mal(new Error('No se pudo cargar '+src));document.head.appendChild(s)})}
 
@@ -82,6 +85,7 @@ function vAccesos(){const e=emp();if(S.backend!=='supabase'||!e)return'';const m
 
 /* ---- Pantalla de ingreso ---- */
 function mostrarLogin(msg){const el=document.getElementById('login');el.hidden=false;document.querySelector('.app').hidden=true;
+ if(!registroAbierto())S.loginModo='ingreso';
  el.innerHTML=`<div class="login-card"><div class="brand"><div class="brand-mark">D|H</div><div><b>Partida Doble</b><small>Contabilidad multiempresa</small></div></div>
  <h1>${S.loginModo==='registro'?'Crear cuenta':'Ingresar'}</h1>${msg?`<div class="note ${msg.ok?'':'warn'}">${esc(msg.t)}</div>`:''}
  <form id="login-form" class="form" style="grid-template-columns:1fr">
@@ -89,12 +93,14 @@ function mostrarLogin(msg){const el=document.getElementById('login');el.hidden=f
  <label>Correo<input id="lg-email" type="email" autocomplete="email" required></label>
  <label>Contraseña<input id="lg-pass" type="password" autocomplete="${S.loginModo==='registro'?'new-password':'current-password'}" minlength="8" required></label>
  <button class="btn pri" type="submit">${S.loginModo==='registro'?'Crear cuenta':'Ingresar'}</button></form>
- <div class="row" style="justify-content:space-between;margin-top:12px"><button class="btn ghost sm" id="lg-modo" type="button">${S.loginModo==='registro'?'Ya tengo cuenta':'Crear una cuenta'}</button>${S.loginModo==='registro'?'':'<button class="btn ghost sm" id="lg-olvido" type="button">Olvidé mi contraseña</button>'}</div></div>`;
- document.getElementById('lg-modo').onclick=()=>{S.loginModo=S.loginModo==='registro'?'ingreso':'registro';mostrarLogin()};
+ <div class="row" style="justify-content:space-between;margin-top:12px">${registroAbierto()?`<button class="btn ghost sm" id="lg-modo" type="button">${S.loginModo==='registro'?'Ya tengo cuenta':'Crear una cuenta'}</button>`:''}${S.loginModo==='registro'?'':'<button class="btn ghost sm" id="lg-olvido" type="button">Olvidé mi contraseña</button>'}</div>
+ ${registroAbierto()?'':'<div class="note" style="margin-top:12px">Las cuentas las crea quien administra el sistema. Si necesitas acceso, pídelo a tu contador.</div>'}</div>`;
+ const mb=document.getElementById('lg-modo');if(mb)mb.onclick=()=>{S.loginModo=S.loginModo==='registro'?'ingreso':'registro';mostrarLogin()};
  const ol=document.getElementById('lg-olvido');if(ol)ol.onclick=async()=>{const em=document.getElementById('lg-email').value.trim();if(!em){mostrarLogin({t:'Escribe tu correo y vuelve a presionar “Olvidé mi contraseña”.'});return}
   const {error}=await SB.client.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});mostrarLogin(error?{t:error.message}:{ok:1,t:'Te enviamos un correo para cambiar la contraseña.'})};
  document.getElementById('login-form').onsubmit=async ev=>{ev.preventDefault();const em=document.getElementById('lg-email').value.trim(),pw=document.getElementById('lg-pass').value;
-  if(S.loginModo==='registro'){const nombre=document.getElementById('lg-nombre').value.trim();const {data,error}=await SB.client.auth.signUp({email:em,password:pw,options:{data:{nombre}}});
+  if(S.loginModo==='registro'){if(!registroAbierto()){S.loginModo='ingreso';mostrarLogin({t:'Las cuentas las crea quien administra el sistema. Pídele acceso a tu contador.'});return}
+  const nombre=document.getElementById('lg-nombre').value.trim();const {data,error}=await SB.client.auth.signUp({email:em,password:pw,options:{data:{nombre}}});
    if(error){mostrarLogin({t:error.message});return}if(!data.session){S.loginModo='ingreso';mostrarLogin({ok:1,t:'Cuenta creada. Revisa tu correo para confirmarla y luego ingresa.'});return}}
   else{const {error}=await SB.client.auth.signInWithPassword({email:em,password:pw});if(error){mostrarLogin({t:error.message==='Invalid login credentials'?'Correo o contraseña incorrectos.':error.message});return}}
   location.reload()}}

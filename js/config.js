@@ -17,5 +17,8 @@
 window.PD_CONFIG = {
   supabaseUrl: 'https://byrgnqvglscadcwdiatg.supabase.co',
   supabaseAnonKey: 'sb_publishable_XRBomTDSXjX5vY5XlwLVdg_MSBqxm1J',
-  rutApi: ''
+  rutApi: '',
+  // Registro público cerrado: nadie crea cuenta desde la página; el dueño invita
+  // desde Supabase (Authentication → Users → Invite user) y luego da acceso aquí.
+  registroAbierto: false
 };
