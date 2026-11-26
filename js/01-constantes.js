@@ -31,7 +31,7 @@ const VIEWS=[
  ['Registros',[['comprobante','Registrar comprobante contable'],['reg-compra','Registrar factura de compra'],['reg-venta','Registrar factura de venta'],['reg-honorarios','Registrar boleta de honorarios'],['activo','Activo fijo'],['ctacte','Cuentas corrientes']]],
  ['Libros contables',[['diario','Libro diario'],['mayor','Libro mayor'],['compras','Libro de compras'],['ventas','Libro de ventas'],['honorarios','Libro de honorarios']]],
  ['Impuestos',[['iva','IVA y F29'],['renta','Renta anual']]],
- ['Personal',[['trabajadores','Trabajadores'],['remu','Remuneraciones']]],
+ ['Recursos Humanos',[['trabajadores','Trabajadores'],['remu','Remuneraciones']]],
  ['Tesorería',[['banco','Conciliación bancaria']]],
  ['Reportes',[['cobrar','Facturas por cobrar'],['pagar','Facturas por pagar'],['balance','Balance 8 columnas'],['eeff','Estados financieros'],['cierre','Cierre y apertura'],['historial','Historial de cambios']]]
 ];

@@ -1,6 +1,7 @@
 /* Partida Doble · Dibujo de la pantalla: menú, barra superior y vista activa. */
 /* ============ Render ============ */
-/* Menú lateral: cada sección (General, Registros, Impuestos, Personal, Tesorería, Reportes)
+/* Menú lateral: cada sección (Administración, Registros, Libros contables, Impuestos,
+   Recursos Humanos, Tesorería, Reportes)
    es un botón que despliega u oculta sus opciones. El estado se recuerda en el navegador. */
 function grupoDe(k){const g=VIEWS.find(([,it])=>it.some(([v])=>v===k));return g?g[0]:'General'}
 function navEst(){if(!S.nav){try{S.nav=JSON.parse(lsGet('pd.nav')||'{}')||{}}catch(e){S.nav={}}}return S.nav}
