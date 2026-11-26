@@ -38,6 +38,19 @@ function pdfReport({title,sub,cols,rows,land,firmas,nota}){const pdf=new MiniPDF
  const n=pdf.pages.length;pdf.pages.forEach((pg,i)=>{pdf.c=pg;pdf.text(M,pdf.H-M+8,`Emitido el ${fd(hoy())} con Partida Doble`,{size:6.5,color:GRAY});pdf.text(pdf.W-M,pdf.H-M+8,`Página ${i+1} de ${n}`,{size:6.5,align:'right',color:GRAY})});
  return pdf.out()}
 const F=n=>fmt(n),FZ=n=>fz(n);
+/* Arma el informe de una liquidación y su nombre de archivo: sirve para verla, imprimirla
+   o enviarla por correo, sin pasar por el diálogo de descarga. */
+function repLiq(ym,id){const per=perTxt();const e=emp()||{};
+const l=((S.remu[ym]||{}).liqs||[]).find(x=>x.tid===id);if(!l)return null;const c=l.c;const t=trabajadores().find(x=>x.id===id)||{};const rows=[];const r=(a,b,st)=>{if(b||st)rows.push({style:st,cells:[a,typeof b==='number'?F(b):b]})};
+  r('Trabajador',`${l.nombre} · RUT ${rutFmt(l.rut)}`);r('Cargo',l.cargo||'—');r('Fecha de ingreso',t.ingreso?fd(t.ingreso):'—');r('Contrato',l.contrato==='plazo_fijo'?'Plazo fijo':'Indefinido');r('Previsión',`AFP ${l.afp} · ${l.salud}`);r('Días trabajados',String(c.dias));rows.push({style:'gap'});
+  r('Haberes imponibles','', 'sub');r('Sueldo base proporcional',c.prop);r(`Horas extra (${l.hx||0} h)`,c.hx);r('Bonos',c.bonos);r('Gratificación legal',c.grat);r('Total imponible',c.imp,'sub');
+  r('Haberes no imponibles','','sub');r('Colación',c.col);r('Movilización',c.mov);r(`Asignación familiar (tramo ${c.tramo})`,c.asig);r('Otros haberes',c.onI);r('Total haberes',c.hab,'tot');rows.push({style:'gap'});
+  r('Descuentos','','sub');r(`AFP ${l.afp} (${String(c.afpT).replace('.',',')}%)`,c.afp);r(`Salud ${l.salud} (7%)`,c.leg);r('Adicional de salud',c.adic);r('Seguro de cesantía',c.afcT);r('Impuesto único',c.iu);r('Anticipos',c.ant);r('Otros descuentos',c.od);r('Total descuentos',c.desc,'sub');
+  r('Líquido a pagar',c.liq,'tot');rows.push({cells:[`Son: ${numPalabras(c.liq).replace(/veintiuno$/,'veintiún').replace(/uno$/,'un')} pesos.`,'']});rows.push({style:'gap'});
+  rows.push({cells:[`Base tributable ${F(c.trib)} · UTM ${F(c.utm)} · UF ${new Intl.NumberFormat('es-CL',{maximumFractionDigits:2}).format(c.uf)}`,'']});rows.push({cells:[`Aportes del empleador: reforma previsional ${F(c.ref)}, cesantía ${F(c.afcE)}, mutual ${F(c.mut)}`,'']});
+  const rep={title:'Liquidación de remuneraciones',sub:per,cols:[{h:'',w:5},{h:'',w:1.6,align:'right'}],rows,firmas:[['Empleador',e.repLegal||e.razon],['Trabajador',`${l.nombre} · ${rutFmt(l.rut)}`]]};
+const nombre=`liquidacion_${rutClean(l.rut)||id}_${ym}.pdf`;
+ return {rep,nombre}}
 function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=perTxt();let rep,nombreFijo='';
  if(w==='diario'){const rows=[];let D=0,H=0;for(const a of asientos().filter(a=>enRango(a.fecha,R))){rows.push({style:'sub',cells:[String(a.numero),`${fd(a.fecha)} · ${a.tipo||''} · ${a.glosa}`,'','']});for(const l of a.lineas){D+=+l.debe||0;H+=+l.haber||0;rows.push({indent:1,cells:[l.cuenta,ctaNom(l.cuenta)+(l.rut?` · ${rutFmt(l.rut)}`:'')+(l.glosa?` · ${l.glosa}`:''),FZ(l.debe),FZ(l.haber)]})}}
   rows.push({style:'tot',cells:['','Totales del período',F(D),F(H)]});rep={title:'Libro diario',sub:per,cols:[{h:'N° / Cuenta',w:1},{h:'Detalle',w:4.6},{h:'Debe',w:1.3,align:'right'},{h:'Haber',w:1.3,align:'right'}],rows}}
@@ -70,14 +83,7 @@ function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=pe
  else if(w==='remu'){const liqs=((S.remu[ymSel()]||{}).liqs||[]).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));const T=totRemu(liqs);const rows=liqs.map(l=>{const c=l.c;return [`${l.nombre} · ${rutFmt(l.rut)}`,String(c.dias),F(c.imp),FZ(c.noImp),F(c.afp),F(c.salud),FZ(c.afcT),FZ(c.iu),FZ(c.ant+c.od),F(c.liq),F(c.costo)]});
   rows.push({style:'tot',cells:['Totales','',F(T.imp),F(T.noImp),F(T.afp),F(T.salud),F(T.afcT),F(T.iu),F((T.ant||0)+(T.od||0)),F(T.liq),F(T.costo)]});
   rep={title:'Libro de remuneraciones',sub:per,land:1,cols:[{h:'Trabajador',w:3.2},{h:'Días',w:.5,align:'right'},...['Imponible','No imponible','AFP','Salud','Cesantía','Imp. único','Otros desc.','Líquido','Costo empresa'].map(h=>({h,w:1,align:'right'}))],rows,firmas:[['Representante legal',e.repLegal||'']]}}
- else if(w==='liq'){const l=((S.remu[ymSel()]||{}).liqs||[]).find(x=>x.tid===id);if(!l)return;const c=l.c;const t=trabajadores().find(x=>x.id===id)||{};const rows=[];const r=(a,b,st)=>{if(b||st)rows.push({style:st,cells:[a,typeof b==='number'?F(b):b]})};
-  r('Trabajador',`${l.nombre} · RUT ${rutFmt(l.rut)}`);r('Cargo',l.cargo||'—');r('Fecha de ingreso',t.ingreso?fd(t.ingreso):'—');r('Contrato',l.contrato==='plazo_fijo'?'Plazo fijo':'Indefinido');r('Previsión',`AFP ${l.afp} · ${l.salud}`);r('Días trabajados',String(c.dias));rows.push({style:'gap'});
-  r('Haberes imponibles','', 'sub');r('Sueldo base proporcional',c.prop);r(`Horas extra (${l.hx||0} h)`,c.hx);r('Bonos',c.bonos);r('Gratificación legal',c.grat);r('Total imponible',c.imp,'sub');
-  r('Haberes no imponibles','','sub');r('Colación',c.col);r('Movilización',c.mov);r(`Asignación familiar (tramo ${c.tramo})`,c.asig);r('Otros haberes',c.onI);r('Total haberes',c.hab,'tot');rows.push({style:'gap'});
-  r('Descuentos','','sub');r(`AFP ${l.afp} (${String(c.afpT).replace('.',',')}%)`,c.afp);r(`Salud ${l.salud} (7%)`,c.leg);r('Adicional de salud',c.adic);r('Seguro de cesantía',c.afcT);r('Impuesto único',c.iu);r('Anticipos',c.ant);r('Otros descuentos',c.od);r('Total descuentos',c.desc,'sub');
-  r('Líquido a pagar',c.liq,'tot');rows.push({cells:[`Son: ${numPalabras(c.liq).replace(/veintiuno$/,'veintiún').replace(/uno$/,'un')} pesos.`,'']});rows.push({style:'gap'});
-  rows.push({cells:[`Base tributable ${F(c.trib)} · UTM ${F(c.utm)} · UF ${new Intl.NumberFormat('es-CL',{maximumFractionDigits:2}).format(c.uf)}`,'']});rows.push({cells:[`Aportes del empleador: reforma previsional ${F(c.ref)}, cesantía ${F(c.afcE)}, mutual ${F(c.mut)}`,'']});
-  rep={title:'Liquidación de remuneraciones',sub:per,cols:[{h:'',w:5},{h:'',w:1.6,align:'right'}],rows,firmas:[['Empleador',e.repLegal||e.razon],['Trabajador',`${l.nombre} · ${rutFmt(l.rut)}`]]}}
+ else if(w==='liq'){const r=repLiq(ymSel(),id);if(!r)return;rep=r.rep;nombreFijo=r.nombre}
  else if(w==='comprobante'){const a=asientos().find(x=>x.id===id);if(!a)return;const L=a.lineas||[];const D=sum(L,l=>+l.debe||0),H=sum(L,l=>+l.haber||0);const rows=[];
   const meta=(k,v)=>rows.push({cells:[`${k}: ${v}`,'','']});
   meta('Comprobante N°',String(a.numero));meta('Fecha',fd(a.fecha));meta('Tipo',a.tipo||'—');meta('Glosa',a.glosa||'—');if(a.origen)meta('Documento de origen',ORIGEN_TXT[a.origen.kind]||a.origen.kind);

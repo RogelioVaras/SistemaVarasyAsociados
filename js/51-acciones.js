@@ -100,12 +100,12 @@ const A={
    const last=`${ym}-${pad(new Date(S.anio,m,0).getDate())}`;const a={id:ex?ex.id:uid(),numero:ex?ex.numero:nextNum(String(S.anio)),fecha:last,tipo:'Ajuste',glosa:`Depreciación ${MESES[m-1].toLowerCase()} ${S.anio}`,lineas:[{cuenta:k.depGasto,debe:v,haber:0},{cuenta:k.depAcum,debe:0,haber:v}],origen:{kind:'dep',ym}};
    await guardarAsiento(a,ex?ymDeAsiento(ex.id):null);n++}
   toast(n?`${n} asiento(s) de depreciación generados o actualizados`:'La depreciación ya estaba al día')},
- 'trab-new':()=>{const P=prevP();S.f.trab={id:null,rut:'',nombre:'',cargo:'',ingreso:hoy(),termino:'',contrato:'indefinido',jornada:String(P.jornada),sueldo:'',grat:'art50',afp:'Habitat',salud:'fonasa',isapre:'',planUF:'',colacion:'',movilizacion:'',cargas:'0',tramo:''}},
+ 'trab-new':()=>{const P=prevP();S.f.trab={id:null,rut:'',nombre:'',email:'',cargo:'',ingreso:hoy(),termino:'',contrato:'indefinido',jornada:String(P.jornada),sueldo:'',grat:'art50',afp:'Habitat',salud:'fonasa',isapre:'',planUF:'',colacion:'',movilizacion:'',cargas:'0',tramo:''}},
  'trab-edit':t=>{const x=trabajadores().find(y=>y.id===t.dataset.id);if(!x)return;S.f.trab=Object.fromEntries(Object.entries(clone(x)).map(([k,v])=>[k,k==='rut'?rutFmt(v):(v==null?'':String(v))]));window.scrollTo(0,0)},
  'trab-cancel':()=>{S.f.trab=null},
- 'trab-save':async()=>{const f=S.f.trab;if(!rutOk(f.rut)){toast('El RUT del trabajador no es válido.','err');return}if(!String(f.nombre).trim()){toast('Falta el nombre.','err');return}const sue=Math.round(pn(f.sueldo));if(sue<=0){toast('Ingresa el sueldo base.','err');return}
+ 'trab-save':async()=>{const f=S.f.trab;if(!rutOk(f.rut)){toast('El RUT del trabajador no es válido.','err');return}if(f.email&&!emailOk(f.email)){toast('El correo no tiene un formato válido.','err');return}if(!String(f.nombre).trim()){toast('Falta el nombre.','err');return}const sue=Math.round(pn(f.sueldo));if(sue<=0){toast('Ingresa el sueldo base.','err');return}
   if(trabajadores().some(t=>t.id!==f.id&&rutClean(t.rut)===rutClean(f.rut))){toast('Ya existe un trabajador con ese RUT.','err');return}
-  const t={id:f.id||uid(),rut:rutClean(f.rut),nombre:f.nombre.trim(),cargo:(f.cargo||'').trim(),ingreso:f.ingreso||'',termino:f.termino||'',contrato:f.contrato,jornada:+String(f.jornada).replace(',','.')||prevP().jornada,sueldo:sue,grat:f.grat,afp:f.afp,salud:f.salud,isapre:f.salud==='isapre'?(f.isapre||''):'',planUF:f.salud==='isapre'?+String(f.planUF).replace(',','.')||0:0,colacion:Math.round(pn(f.colacion)),movilizacion:Math.round(pn(f.movilizacion)),cargas:Math.round(pn(f.cargas)),tramo:f.tramo||''};
+  const t={id:f.id||uid(),rut:rutClean(f.rut),nombre:f.nombre.trim(),email:String(f.email||'').trim().toLowerCase(),cargo:(f.cargo||'').trim(),ingreso:f.ingreso||'',termino:f.termino||'',contrato:f.contrato,jornada:+String(f.jornada).replace(',','.')||prevP().jornada,sueldo:sue,grat:f.grat,afp:f.afp,salud:f.salud,isapre:f.salud==='isapre'?(f.isapre||''):'',planUF:f.salud==='isapre'?+String(f.planUF).replace(',','.')||0:0,colacion:Math.round(pn(f.colacion)),movilizacion:Math.round(pn(f.movilizacion)),cargas:Math.round(pn(f.cargas)),tramo:f.tramo||''};
   if(t.sueldo<prevP().imm*(Math.min(t.jornada,prevP().jornada)/prevP().jornada)-1)toast('Ojo: el sueldo base es menor al ingreso mínimo para esa jornada.','err');
   const list=clone(trabajadores()).filter(x=>x.id!==t.id);list.push(t);S.f.trab=null;await guardarTrab(list);toast('Trabajador guardado')},
  'ind-traer':async()=>{const ym=ymSel();if(!ym){toast('Elige un mes en la barra de arriba para traer la UF y la UTM.','err');return}
@@ -125,6 +125,15 @@ const A={
  'liq-save':async()=>{const ym=ymSel();chkBloq(ym);const f=S.f.liq;const t=trabajadores().find(x=>x.id===f.tid);if(!t){toast('La ficha del trabajador ya no existe.','err');return}if(!ufMes(ym)||!utm(ym)){toast('Ingresa la UF y la UTM del mes.','err');return}
   const doc=clone(S.remu[ym]||{liqs:[]});const l={dias:+String(f.dias).replace(',','.')||0,hx:+String(f.hx).replace(',','.')||0,bonos:Math.round(pn(f.bonos)),otrosNoImp:Math.round(pn(f.otrosNoImp)),anticipos:Math.round(pn(f.anticipos)),otrosDesc:Math.round(pn(f.otrosDesc))};
   const nl=liqFromTrab(t,ym,l);const ol=(doc.liqs||[]).find(x=>x.tid===f.tid);doc.liqs=(doc.liqs||[]).map(x=>x.tid===f.tid?nl:x);S.f.liq=null;await putE(`remu/${ym}`,doc);const rl=x=>x?`${x.c.dias} días · HE ${x.hx||0} · bonos ${fmt(x.bonos||0)} · anticipos ${fmt(x.anticipos||0)} · líquido ${fmt(x.c.liq)}`:'';await audit('modificar','Liquidación',`${nl.nombre} · ${perTxt()}`,rl(ol),rl(nl));toast('Liquidación recalculada')},
+ 'env-uno':async t=>{const ym=ymSel();const l=((S.remu[ym]||{}).liqs||[]).find(x=>x.tid===t.dataset.id);if(!l)return;
+  const tr=trabajadores().find(x=>x.id===l.tid)||{};const para=String(tr.email||'').trim();
+  if(!emailOk(para)){toast('Ese trabajador no tiene un correo guardado.','err');return}
+  S.busy=true;try{const r=await enviarLote(ym,[l],()=>para);
+   if(r.ok)toast('Liquidación enviada a '+para);else toast(r.fallos[0]||'No se pudo enviar la liquidación.','err')}finally{S.busy=false}},
+ 'env-prueba':async()=>{const ym=ymSel();const l=((S.remu[ym]||{}).liqs||[])[0];if(!l)return;
+  if(!emailOk(S.email)){toast('Tu cuenta no tiene un correo asociado.','err');return}
+  S.busy=true;try{await enviarLiqUno(ym,l,S.email);toast('Prueba enviada a '+S.email)}
+  catch(e){toast(e.message,'err')}finally{S.busy=false}},
  'remu-cent':async()=>{const ym=ymSel();const liqs=(S.remu[ym]||{}).liqs||[];if(!liqs.length)return;const ex=asientos().find(a=>a.origen&&a.origen.kind==='remu'&&a.origen.ym===ym);const a=asientoRemu(ym,liqs,ex);
   if(sum(a.lineas,l=>l.debe)!==sum(a.lineas,l=>l.haber)){toast('La centralización no cuadra; revisa las liquidaciones.','err');return}await guardarAsiento(a,ex?ymDeAsiento(ex.id):null);toast(`Centralización N°${a.numero} ${ex?'actualizada':'creada'}`)},
  'regla-add':async t=>{const k=t.dataset.k;const f=S.f.regla||{};if(!rutOk(f.rut)){toast('El RUT no es válido.','err');return}if(!cm()[f.cuenta]){toast('Elige una cuenta.','err');return}await guardarRegla(k,f.rut,f.cuenta);S.f.regla={rut:'',cuenta:f.cuenta};toast('Regla guardada')},
@@ -221,6 +230,13 @@ const A={
  'pdf':t=>exportPDF(t.dataset.what,t.dataset.id)
 };
 const CONFIRM={
+ envTodos:async()=>{const ym=ymSel();const liqs=(S.remu[ym]||{}).liqs||[];
+  const trab=Object.fromEntries(trabajadores().map(t=>[t.id,t]));
+  const con=liqs.filter(l=>emailOk((trab[l.tid]||{}).email));
+  if(!con.length){toast('Ningún trabajador del mes tiene correo guardado.','err');return}
+  S.busy=true;try{const r=await enviarLote(ym,con,l=>String((trab[l.tid]||{}).email||''));
+   if(r.fallos.length)toast(`${r.ok} enviada(s) y ${r.fallos.length} con problemas. ${r.fallos[0]}`,'err');
+   else toast(`${r.ok} liquidación(es) enviadas`)}finally{S.busy=false}},
  delEmp:async id=>{if(!soloDueno())return;const was=S.empId===id;if(S.local){const st=lsLoad();Object.keys(st).filter(p=>p.startsWith(`empresas/${id}/`)).forEach(p=>delete st[p]);lsPut('_',null)}if(S.db){for(const k of ['diario','rcv','banco']){try{const s=await S.db.collection(`empresas/${id}/${k}`).get();for(const d of s.docs)await enqueue(`empresas/${id}/${k}/${d.id}`,()=>S.db.doc(`empresas/${id}/${k}/${d.id}`).delete())}catch(e){toast(errMsg(e),'err');return}}}
   await del(`empresas/${id}`);if(was)selectEmp(null);toast('Empresa eliminada')},
  delAs:async id=>{await borrarAsiento(id);toast('Comprobante eliminado')},

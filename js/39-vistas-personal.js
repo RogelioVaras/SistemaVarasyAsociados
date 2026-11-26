@@ -4,6 +4,7 @@ function vTrabajadores(){const e=emp();if(!e)return head('Trabajadores','')+noEm
  const sel=(id,key,opts,val)=>`<select id="${id}" data-f="trab.${key}">${opts.map(([v,t])=>`<option value="${v}" ${String(val)===String(v)?'selected':''}>${t}</option>`).join('')}</select>`;
  const form=f?`<div class="sheet"><div class="sheet-h"><h2>${f.id?'Editar trabajador':'Nuevo trabajador'}</h2></div><div class="sheet-b"><div class="form">
   <label>RUT<input id="tf-rut" data-f="trab.rut" value="${esc(f.rut)}"></label><label class="wide">Nombre completo<input id="tf-nom" data-f="trab.nombre" value="${esc(f.nombre)}"></label>
+  <label class="wide">Correo<input id="tf-mail" type="email" data-f="trab.email" value="${esc(f.email||'')}" placeholder="trabajador@correo.cl" autocomplete="off"><span class="sub" style="text-transform:none;letter-spacing:0;font-size:12px">Se usa para enviarle su liquidación</span></label>
   <label>Cargo<input id="tf-cargo" data-f="trab.cargo" value="${esc(f.cargo)}"></label><label>Fecha de ingreso<input type="date" id="tf-ing" data-f="trab.ingreso" value="${esc(f.ingreso)}"></label>
   <label>Fecha de término<input type="date" id="tf-ter" data-f="trab.termino" value="${esc(f.termino||'')}"></label>
   <label>Contrato${sel('tf-con','contrato',[['indefinido','Indefinido'],['plazo_fijo','Plazo fijo u obra']],f.contrato)}</label>
@@ -19,8 +20,8 @@ function vTrabajadores(){const e=emp();if(!e)return head('Trabajadores','')+noEm
   <label>Tramo asignación familiar${sel('tf-tra','tramo',[['','Automático según renta'],['A','Tramo A'],['B','Tramo B'],['C','Tramo C'],['D','Tramo D (sin monto)']],f.tramo||'')}</label>
  </div><div class="row" style="margin-top:12px"><button class="btn pri" data-act="trab-save">Guardar trabajador</button><button class="btn ghost" data-act="trab-cancel">Cancelar</button></div></div></div>`:'';
  return head('Trabajadores',`${ts.length} fichas · ${esc(e.razon)}`,f?'':'<button class="btn pri" data-act="trab-new">Nuevo trabajador</button>')+form+
- `<div class="sheet">${ts.length?`<div class="scroll"><table><thead><tr><th>RUT</th><th>Nombre</th><th>Cargo</th><th>Contrato</th><th>Ingreso</th><th class="n">Sueldo base</th><th>AFP</th><th>Salud</th><th></th></tr></thead><tbody>
- ${ts.map(t=>`<tr><td class="c">${rutFmt(t.rut)}</td><td><b>${esc(t.nombre)}</b>${t.termino?` <span class="pill">Término ${fd(t.termino)}</span>`:''}</td><td>${esc(t.cargo)}</td><td>${t.contrato==='plazo_fijo'?'Plazo fijo':'Indefinido'}</td><td class="c">${fd(t.ingreso)}</td><td class="n">${fmt(t.sueldo)}</td><td>${esc(t.afp)}</td><td>${t.salud==='isapre'?esc(t.isapre||'Isapre')+` (${String(t.planUF||0).replace('.',',')} UF)`:'Fonasa'}</td><td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-act="trab-edit" data-id="${t.id}">Editar</button>${confirmBtn('delTrab:'+t.id,'Eliminar')}</div></td></tr>`).join('')}
+ `<div class="sheet">${ts.length?`<div class="scroll"><table><thead><tr><th>RUT</th><th>Nombre</th><th>Correo</th><th>Cargo</th><th>Contrato</th><th>Ingreso</th><th class="n">Sueldo base</th><th>AFP</th><th>Salud</th><th></th></tr></thead><tbody>
+ ${ts.map(t=>`<tr><td class="c">${rutFmt(t.rut)}</td><td><b>${esc(t.nombre)}</b>${t.termino?` <span class="pill">Término ${fd(t.termino)}</span>`:''}</td><td class="c" style="font-size:12px">${t.email?esc(t.email):'<span class="pill warn">Sin correo</span>'}</td><td>${esc(t.cargo)}</td><td>${t.contrato==='plazo_fijo'?'Plazo fijo':'Indefinido'}</td><td class="c">${fd(t.ingreso)}</td><td class="n">${fmt(t.sueldo)}</td><td>${esc(t.afp)}</td><td>${t.salud==='isapre'?esc(t.isapre||'Isapre')+` (${String(t.planUF||0).replace('.',',')} UF)`:'Fonasa'}</td><td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap"><button class="btn sm" data-act="trab-edit" data-id="${t.id}">Editar</button>${confirmBtn('delTrab:'+t.id,'Eliminar')}</div></td></tr>`).join('')}
  </tbody></table></div>`:`<div class="empty"><h3>Sin trabajadores</h3><p>Crea una ficha por trabajador para calcular sus liquidaciones.</p></div>`}</div>`}
 
 function vParamRemu(ym){const P=prevP();const open=S.showImp.param;
@@ -97,4 +98,36 @@ function vRemuCentral(){const e=emp();const Ti='Centralización de remuneracione
   ${liqs.map(l=>{const c=l.c||{};return `<tr><td><b>${esc(l.nombre)}</b><br><span class="c">${rutFmt(l.rut)}</span></td><td class="n">${c.dias||0}</td><td class="n">${fmt(c.hab)}</td><td class="n">${fmt(c.afp+c.salud+c.afcT)}</td><td class="n"><b>${fmt(c.liq)}</b></td><td class="n">${fmt(c.costo)}</td></tr>`}).join('')}
   <tr class="tot"><td>Totales</td><td></td><td class="n">${fmt(T.hab)}</td><td class="n">${fmt(cot)}</td><td class="n">${fmt(T.liq)}</td><td class="n">${fmt(T.costo)}</td></tr></tbody></table></div></div>`+
   remuCentAnio();
+}
+
+/* Enviar liquidaciones de sueldo: manda el PDF de cada liquidación al correo del trabajador
+   con la función de Supabase. Muestra quién tiene correo y el estado de cada envío. */
+function vEnvLiq(){const e=emp();const Ti='Enviar liquidaciones de sueldo';
+ if(!e)return head(Ti,'')+noEmp();if(!ready())return loading();
+ const selMes=`<label class="fl">Período<select id="el-mes" data-top="mes"><option value="0"${!S.mes?' selected':''}>Elige un mes…</option>${MESES.map((m,i)=>`<option value="${i+1}"${S.mes===i+1?' selected':''}>${m} ${S.anio}</option>`).join('')}</select></label>`;
+ if(!S.mes)return head(Ti,`Año ${S.anio} · elige el mes de las liquidaciones`,selMes)+
+  `<div class="sheet"><div class="empty"><h3>Sin período elegido</h3><p>Las liquidaciones se envían mes a mes: elige el mes y aparecerán los trabajadores con su correo.</p></div></div>`;
+ const ym=ymSel();const liqs=((S.remu[ym]||{}).liqs||[]).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+ if(!liqs.length)return head(Ti,`${esc(perTxt())} · sin liquidaciones`,selMes)+
+  `<div class="sheet"><div class="empty"><h3>No hay liquidaciones en ${esc(perTxt())}</h3><p>Primero se calculan en <a href="#remu">Remuneraciones</a>.</p></div></div>`;
+ const trab=Object.fromEntries(trabajadores().map(t=>[t.id,t]));
+ const env=enviosDe(ym);const listo=correoListo();
+ const conMail=liqs.filter(l=>emailOk((trab[l.tid]||{}).email));
+ const sinMail=liqs.length-conMail.length;const enviadas=liqs.filter(l=>(env[l.tid]||{}).ok).length;
+ const armado=S.confirm==='envTodos';
+ const botonTodos=conMail.length&&listo
+  ?`<button class="btn ${armado?'danger armed':'pri'}" data-confirm="envTodos">${armado?'Confirmar envío a todos':`Enviar a todos (${conMail.length})`}</button>`
+  :`<button class="btn pri" disabled>Enviar a todos (${conMail.length})</button>`;
+ const acciones=selMes+(listo&&conMail.length?`<button class="btn" data-act="env-prueba" title="Manda la primera liquidación a tu propio correo">Enviar prueba a mi correo</button>`:'')+botonTodos;
+ const filas=liqs.map(l=>{const t=trab[l.tid]||{};const mail=String(t.email||'').trim();const ev=env[l.tid];
+  let estado='<span class="pill">Sin enviar</span>';
+  if(ev&&ev.ok)estado=`<span class="pill ok">Enviado ${fd(String(ev.t).slice(0,10))} ${new Date(ev.t).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}</span> <span class="muted">a ${esc(ev.email||'')}</span>`;
+  else if(ev&&!ev.ok)estado=`<span class="pill bad">Falló el envío</span> <span class="muted">${esc(String(ev.error||'').slice(0,70))}</span>`;
+  const boton=emailOk(mail)&&listo?`<button class="btn sm pri" data-act="env-uno" data-id="${l.tid}">Enviar</button>`:'';
+  return `<tr><td><b>${esc(l.nombre)}</b><br><span class="c">${rutFmt(l.rut)}</span></td><td class="c">${emailOk(mail)?esc(mail):'<span class="pill warn">Falta correo</span>'}</td><td class="n">${fmt((l.c||{}).liq)}</td><td>${estado}</td><td><div class="row" style="justify-content:flex-end;flex-wrap:nowrap">${boton}</div></td></tr>`}).join('');
+ return head(Ti,`${esc(perTxt())} · ${liqs.length} liquidaciones · ${enviadas} enviada(s)`,acciones)+
+  (listo?'':'<div class="note warn">El envío por correo necesita la sesión en la nube. Entra con tu cuenta y vuelve a esta pantalla.</div>')+
+  (sinMail?`<div class="note warn">${sinMail} trabajador(es) sin correo guardado. Complétalo en <a href="#trabajadores">Trabajadores</a> y vuelve aquí.</div>`:'')+
+  `<div class="sheet"><div class="scroll"><table><thead><tr><th>Trabajador</th><th>Correo</th><th class="n">Líquido</th><th>Estado</th><th></th></tr></thead><tbody>${filas}</tbody></table></div></div>`+
+  `<p class="muted" style="font-size:12.5px;padding:0 4px">Cada envío va desde Notificaciones@vyasociados.cl con el PDF de la liquidación adjunto, y queda registrado aquí y en el historial de cambios.</p>`;
 }
