@@ -5,5 +5,5 @@ async function bajarCSV(nombre,rows){
  await saveFile(nombre,txt)}
 const nomArchivo=base=>`${base}_${rutClean((emp()||{}).rut)||'empresa'}_${S.mes?S.anio+'-'+pad(S.mes):S.anio}.csv`;
 const PDFS=new Set(['diario','mayor','compras','ventas','honorarios','cobrar','pagar','balance','eeff','f29','remu']);const NOCSV=new Set(['eeff']);
-const csvBtn=what=>canDl()?`${NOCSV.has(what)?'':`<button class="btn sm" data-act="csv" data-what="${what}">CSV</button>`}${PDFS.has(what)?`<button class="btn sm" data-act="pdf" data-what="${what}">PDF</button>`:''}`:'';const expBtns=csvBtn;
+const csvBtn=(what,lbl)=>canDl()?`${NOCSV.has(what)?'':`<button class="btn sm" data-act="csv" data-what="${what}">${lbl||'CSV'}</button>`}${PDFS.has(what)?`<button class="btn sm" data-act="pdf" data-what="${what}">PDF</button>`:''}`:'';const expBtns=csvBtn;
 
