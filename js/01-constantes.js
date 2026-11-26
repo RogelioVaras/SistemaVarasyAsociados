@@ -28,11 +28,12 @@ const REGIMENES=['14 D N°3 Pro Pyme General','14 D N°8 Pro Pyme Transparente',
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const VIEWS=[
  ['Administración',[['empresas','Empresas'],['usuarios','Usuarios'],['cartera','Panel de cartera'],['plan','Plan de cuentas'],['calendario','Calendario'],['resumen','Resumen']]],
- ['Registros',[['comprobante','Generar comprobante contable'],['compras','Libro de compras'],['ventas','Libro de ventas'],['honorarios','Honorarios'],['activo','Activo fijo'],['ctacte','Cuentas corrientes']]],
+ ['Registros',[['comprobante','Registrar comprobante contable'],['reg-compra','Registrar factura de compra'],['reg-venta','Registrar factura de venta'],['reg-honorarios','Registrar boleta de honorarios'],['activo','Activo fijo'],['ctacte','Cuentas corrientes']]],
+ ['Libros contables',[['diario','Libro diario'],['mayor','Libro mayor'],['compras','Libro de compras'],['ventas','Libro de ventas'],['honorarios','Libro de honorarios']]],
  ['Impuestos',[['iva','IVA y F29'],['renta','Renta anual']]],
  ['Personal',[['trabajadores','Trabajadores'],['remu','Remuneraciones']]],
  ['Tesorería',[['banco','Conciliación bancaria']]],
- ['Reportes',[['diario','Libro diario'],['mayor','Libro mayor'],['cobrar','Facturas por cobrar'],['pagar','Facturas por pagar'],['balance','Balance 8 columnas'],['eeff','Estados financieros'],['cierre','Cierre y apertura'],['historial','Historial de cambios']]]
+ ['Reportes',[['cobrar','Facturas por cobrar'],['pagar','Facturas por pagar'],['balance','Balance 8 columnas'],['eeff','Estados financieros'],['cierre','Cierre y apertura'],['historial','Historial de cambios']]]
 ];
 /* Aviso de responsabilidad: va SOLO en los informes impresos (PDF), no en pantalla. */
 const AVISO_INFORME='Aviso: este informe se genera a partir de los registros contables ingresados por la empresa y no constituye una auditoría ni un informe de auditoría. La administración de la empresa es responsable de la veracidad e integridad de esos registros; el sistema no responde por errores u omisiones de la información registrada ni por las decisiones que se tomen a partir de este informe.';

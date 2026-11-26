@@ -3,6 +3,10 @@
 /* El formulario del comprobante a partir de un asiento ya guardado (para corregir o imprimir). */
 function edDesdeAsiento(a){return{...clone(a),_oldYm:a.fecha.slice(0,7),lineas:(a.lineas||[]).map(l=>({cuenta:l.cuenta,debe:l.debe?String(l.debe):'',haber:l.haber?String(l.haber):'',glosa:l.glosa||'',rut:l.rut?rutFmt(l.rut):'',ref:l.ref||''}))}}
 function blankEd(){const [d,h]=rango();const f=hoy();return{id:null,numero:null,fecha:enRango(f,[d,h])?f:d,tipo:'Traspaso',glosa:'',lineas:[{cuenta:'',debe:'',haber:'',glosa:''},{cuenta:'',debe:'',haber:'',glosa:''}]}}
+/* Lleva a la pantalla de registro sin recargar si ya se está en ella. */
+function irA(v){if(location.hash.slice(1)!==v)location.hash=v}
+/* Las pantallas de registro se llaman en singular: reg-compra y reg-venta. */
+const regDe=k=>'reg-'+(k==='compras'?'compra':'venta');
 function parseCta(txt){txt=String(txt||'').trim();if(!txt)return'';const code=txt.split(/\s+/)[0];if(cm()[code])return code;const n=norm(txt);const hit=plan().find(c=>norm(c.nombre)===n)||plan().filter(c=>norm(c.nombre).includes(n));return Array.isArray(hit)?(hit.length===1?hit[0].codigo:''):(hit?hit.codigo:'')}
 function updEdTot(){const t=edTotals();const el=$('#ed-tot');if(el)el.innerHTML=`<span>Debe <b>${fmt(t.d)}</b></span><span>Haber <b>${fmt(t.h)}</b></span>${t.ok?'<span class="pill ok">Cuadrado</span>':`<span class="pill bad">Diferencia ${fmt(t.d-t.h)}</span>`}`;const b=$('#ed-save');if(b)b.disabled=!t.ok}
 function updHon(){const f=S.f.hon;const el=$('#hf-calc');if(!f||!el)return;const b=Math.round(pn(f.bruto));const r=f.retenida==='0'?0:Math.round(b*tasaHon(+String(f.fecha).slice(0,4))/100);el.innerHTML=`<span>Retención <b>${fmt(r)}</b></span><span>Líquido a pagar <b>${fmt(b-r)}</b></span>`}
@@ -76,9 +80,9 @@ const A={
   const keepNum=ed.numero&&ed._oldYm&&ed._oldYm.slice(0,4)===ed.fecha.slice(0,4);
   const a={id:ed.id||uid(),numero:keepNum?ed.numero:nextNum(ed.fecha.slice(0,4)),fecha:ed.fecha,tipo:ed.tipo,glosa:ed.glosa.trim(),lineas:L,...(ed.origen?{origen:ed.origen}:{})};
   const old=ed._oldYm;await guardarAsiento(a,old);S.ed=edDesdeAsiento(a);toast(`Comprobante N°${a.numero} guardado`)},
- 'doc-new':t=>{S.f[t.dataset.k]=docFormBlank(t.dataset.k)},
- 'hon-new':()=>{const [d,h]=rango();const f=hoy();S.f.hon={id:null,fecha:enRango(f,[d,h])?f:d,numero:'',rut:'',nombre:'',bruto:'',retenida:'1',cuenta:claves().honGasto}},
- 'hon-edit':t=>{const h=honDe().find(x=>x.id===t.dataset.id);if(!h)return;S.f.hon={...clone(h),rut:rutFmt(h.rut),bruto:String(h.bruto),retenida:h.retenida===false?'0':'1',_oldYm:h._ym};window.scrollTo(0,0)},
+ 'doc-new':t=>{const k=t.dataset.k;S.f[k]=docFormBlank(k);irA(regDe(k))},
+ 'hon-new':()=>{S.f.hon=honFormBlank();irA('reg-honorarios')},
+ 'hon-edit':t=>{const h=honDe().find(x=>x.id===t.dataset.id);if(!h)return;S.f.hon={...clone(h),rut:rutFmt(h.rut),bruto:String(h.bruto),retenida:h.retenida===false?'0':'1',_oldYm:h._ym};irA('reg-honorarios');window.scrollTo(0,0)},
  'hon-cancel':()=>{S.f.hon=null},
  'hon-save':async()=>{const f=S.f.hon;const bruto=Math.round(pn(f.bruto));if(!f.fecha||!String(f.numero).trim()){toast('Faltan la fecha o el número de boleta.','err');return}if(!rutOk(f.rut)){toast('El RUT del emisor no es válido.','err');return}if(bruto<=0){toast('El monto bruto debe ser mayor que cero.','err');return}
   const ret=Math.round(bruto*tasaHon(+f.fecha.slice(0,4))/100);const h={id:f.id||uid(),fecha:f.fecha,numero:String(f.numero).trim(),rut:rutClean(f.rut),nombre:(f.nombre||'').trim(),bruto,ret,retenida:f.retenida!=='0',cuenta:f.cuenta,...(f.asientoId?{asientoId:f.asientoId}:{})};
@@ -129,8 +133,8 @@ const A={
   const a={id:ex?ex.id:uid(),numero:ex?ex.numero:nextNum(String(S.anio)),fecha:rango()[1],tipo:'Ajuste',glosa:`Ajuste IVA uso común no recuperable ${perTxt()}`,lineas:[{cuenta:k.compras,debe:v,haber:0},{cuenta:k.ivaCF,debe:0,haber:v}],origen:{kind:'ajusteUC',ym}};
   await guardarAsiento(a,ex?ymDeAsiento(ex.id):null);toast(`Asiento de ajuste N°${a.numero} ${ex?'actualizado':'creado'}`)},
  'bol-res':()=>{if(!S.mes){toast('Elige un mes para registrar el resumen de boletas.','err');return}const ym=ymSel();const n=docsDe('ventas').filter(d=>d.folio.startsWith('RES-'+ym)).length;
-  S.f.ventas={...docFormBlank('ventas'),tipo:'39',folio:`RES-${ym}${n?'-'+(n+1):''}`,fecha:rango()[1],razon:'Resumen de boletas del mes',cant:''};toast('Ingresa el total con IVA y la cantidad de boletas del mes (o del día).')},
- 'doc-edit':t=>{const k=t.dataset.k;const d=docsDe(k).find(x=>x.id===t.dataset.id);if(!d)return;const s=v=>v?String(v):'';S.f[k]={...clone(d),tipo:String(d.tipo),exento:s(d.exento),neto:s(d.neto),iva:s(d.iva),ivaNoRec:s(d.ivaNoRec),total:s(d.total),_oldYm:d._ym};window.scrollTo(0,0)},
+  S.f.ventas={...docFormBlank('ventas'),tipo:'39',folio:`RES-${ym}${n?'-'+(n+1):''}`,fecha:rango()[1],razon:'Resumen de boletas del mes',cant:''};irA('reg-venta');toast('Ingresa el total con IVA y la cantidad de boletas del mes (o del día).')},
+ 'doc-edit':t=>{const k=t.dataset.k;const d=docsDe(k).find(x=>x.id===t.dataset.id);if(!d)return;const s=v=>v?String(v):'';S.f[k]={...clone(d),tipo:String(d.tipo),exento:s(d.exento),neto:s(d.neto),iva:s(d.iva),ivaNoRec:s(d.ivaNoRec),total:s(d.total),_oldYm:d._ym};irA(regDe(k));window.scrollTo(0,0)},
  'doc-cancel':t=>{S.f[t.dataset.k]=null},
  'doc-save':async t=>{const k=t.dataset.k;const f=S.f[k];if(!f.fecha||!String(f.folio).trim()){toast('Faltan la fecha o el folio.','err');return}
   if(f.rut&&!rutOk(f.rut)){toast('El RUT no es válido.','err');return}if(![39,41].includes(+f.tipo)&&!f.rut){toast('Falta el RUT.','err');return}

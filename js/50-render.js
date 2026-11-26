@@ -18,7 +18,7 @@ function render(){inval();const a=document.activeElement;const id=a&&a.id;let ss
  const sy=window.scrollY;
  renderNav();renderTop();
  $('#dl-cuentas').innerHTML=plan().map(c=>`<option value="${c.codigo} ${esc(c.nombre)}"></option>`).join('');
- const V={resumen:vResumen,empresas:vEmpresas,usuarios:vUsuarios,plan:vPlan,diario:vDiario,comprobante:vComprobante,mayor:vMayor,cobrar:()=>vFacturas('cobrar'),pagar:()=>vFacturas('pagar'),compras:()=>vLibro('compras'),ventas:()=>vLibro('ventas'),iva:vIva,banco:vBanco,balance:vBalance,eeff:vEeff,ctacte:vCtacte,renta:vRenta,cierre:vCierre,cartera:vCartera,honorarios:vHonorarios,activo:vActivo,trabajadores:vTrabajadores,remu:vRemu,calendario:vCalendario,historial:vHistorial}[S.view]||vResumen;
+ const V={resumen:vResumen,empresas:vEmpresas,usuarios:vUsuarios,plan:vPlan,diario:vDiario,comprobante:vComprobante,mayor:vMayor,cobrar:()=>vFacturas('cobrar'),pagar:()=>vFacturas('pagar'),compras:()=>vLibro('compras'),ventas:()=>vLibro('ventas'),'reg-compra':()=>vLibro('compras','registro'),'reg-venta':()=>vLibro('ventas','registro'),iva:vIva,banco:vBanco,balance:vBalance,eeff:vEeff,ctacte:vCtacte,renta:vRenta,cierre:vCierre,cartera:vCartera,honorarios:()=>vHonorarios(),'reg-honorarios':()=>vHonorarios('registro'),activo:vActivo,trabajadores:vTrabajadores,remu:vRemu,calendario:vCalendario,historial:vHistorial}[S.view]||vResumen;
  if(!S.loaded.emps&&S.mode==='cargando'){$('#view').innerHTML=`<div class="sheet"><div class="empty">Cargando empresas…</div></div>`;return}
  NEED.clear();document.body.classList.toggle('ro',S.ro);
  $('#view').innerHTML=(S.ro?`<div class="note warn">${S.rol==='lector'

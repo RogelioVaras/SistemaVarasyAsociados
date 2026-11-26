@@ -96,6 +96,10 @@ function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=pe
   const cab=esCob?'Cobrado':'Pagado';
   rep={title:esCob?'Facturas por cobrar':'Facturas por pagar',sub:`Del ${fd(f.desde)} al ${fd(f.hasta)} · vencimiento a ${plazo} días · el pendiente ya tiene aplicadas las notas de crédito y los abonos`,land:1,
    cols:[{h:'RUT',w:1.1},{h:'Razón social',w:3},{h:'Tipo',w:.7},{h:'Folio',w:.9},{h:'Fecha',w:.9},{h:'Vence',w:.9},{h:'Total',w:1.2,align:'right'},{h:cab,w:1.1,align:'right'},{h:'Pendiente',w:1.2,align:'right'},{h:'Días',w:.6,align:'right'}],rows}}
+ else if(w==='honorarios'){const list=honDe().filter(h=>enRango(h.fecha,R)).sort((a,b)=>a.fecha<b.fecha?-1:1);const ret=h=>h.retenida===false?0:h.ret;
+  const rows=list.map(h=>[fd(h.fecha),String(h.numero),rutFmt(h.rut),h.nombre,F(h.bruto),FZ(ret(h)),F(h.bruto-ret(h))]);
+  rows.push({style:'tot',cells:['Totales','','','',F(sum(list,h=>h.bruto)),F(sum(list,ret)),F(sum(list,h=>h.bruto-ret(h)))]});
+  rep={title:'Libro de honorarios',sub:`${per} · ${list.length} boletas`,land:1,cols:[{h:'Fecha',w:.9},{h:'N° boleta',w:1},{h:'RUT',w:1.1},{h:'Prestador',w:3.4},{h:'Bruto',w:1.2,align:'right'},{h:'Retención',w:1.2,align:'right'},{h:'Líquido',w:1.2,align:'right'}],rows}}
  if(!rep)return;const bytes=pdfReport(rep);const name=nombreFijo||(w==='liq'?`liquidacion_${(((S.remu[ymSel()]||{}).liqs||[]).find(x=>x.tid===id)||{}).rut||''}_${ymSel()}.pdf`:nomArchivo(rep.title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_')).replace(/\.csv$/,'.pdf'));
  return saveFile(name,bytes)}
 
