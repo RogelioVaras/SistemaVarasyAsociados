@@ -68,7 +68,8 @@ function agruparFacturas(ver){const m={};
  return Object.values(m).sort((a,b)=>b.pend-a.pend)}
 /* Contenido que cambia con los filtros (indicadores, saldos a favor y tabla).
    Se pinta aparte para no reemplazar los campos de filtro mientras se escriben. */
-function fxRes(kind){const esCob=kind==='cobrar';
+function fxRes(kind){if(kind==='honorarios')return fxResHon();
+ const esCob=kind==='cobrar';
  const {f,todas,ver,favor}=facturasFiltradas(kind);
  const pend=sum(ver,r=>r.pend),total=sum(ver,r=>r.total),pag=sum(ver,r=>r.pagado);
  const vencido=sum(ver,r=>r.diasVenc>0?r.pend:0);const nVenc=ver.filter(r=>r.diasVenc>0).length;
@@ -109,4 +110,53 @@ function vFacturas(kind){const e=emp();const esCob=kind==='cobrar';const titulo=
   `<button class="btn sm ghost" data-act="fx-limpiar" data-k="${kind}" title="Volver a los filtros del período">Limpiar</button>`+csvBtn(kind);
  return head(titulo,'Filtra por fecha, cliente, vencimiento o antigüedad · el pendiente ya tiene aplicadas las notas de crédito y los abonos',ctrl)+
   `<div id="fx-res">${fxRes(kind)}</div>`;
+}
+
+/* ---- Boletas de honorarios por pagar: mismos filtros que facturas, solo boletas ---- */
+function honsFiltradas(){
+ const f=fxDe('honorarios');const tope=f.hasta||rango()[1];const plazo=Math.max(1,Math.round(pn(f.plazo)||30));
+ const todas=honorariosDe(tope,{plazo}).filter(r=>r.fecha>=f.desde&&r.fecha<=f.hasta);
+ const q=norm(f.q),qn=rutClean(f.q),txt=String(f.q||'').trim();
+ let ver=todas.filter(r=>!q||(qn.length>=3&&r.rut.includes(qn))||norm(r.razon).includes(q)||String(r.folio)===txt);
+ if(f.tramo)ver=ver.filter(r=>tramoDe(r.dias)===f.tramo);
+ if(f.venc==='vencidas')ver=ver.filter(r=>r.diasVenc>0);else if(f.venc==='porVencer')ver=ver.filter(r=>r.diasVenc<=0);
+ if(!f.todas)ver=ver.filter(r=>Math.round(r.pend)!==0);
+ return {f,todas,ver,plazo};
+}
+function fxResHon(){const {f,ver}=honsFiltradas();
+ const pend=sum(ver,r=>r.pend),total=sum(ver,r=>r.total),pag=sum(ver,r=>r.pagado),bruto=sum(ver,r=>r.bruto),ret=sum(ver,r=>r.ret);
+ const vencido=sum(ver,r=>r.diasVenc>0?r.pend:0);const nVenc=ver.filter(r=>r.diasVenc>0).length;
+ const kpis=`<div class="kpis"><div class="kpi"><span>Por pagar</span><b>${fmt(pend)}</b><small>${ver.length} boleta(s)</small></div>`+
+  `<div class="kpi"><span>Vencido</span><b${vencido?' style="color:var(--bad)"':''}>${fmt(vencido)}</b><small>${nVenc} con más de ${f.plazo} días</small></div>`+
+  `<div class="kpi"><span>Total líquido</span><b>${fmt(total)}</b><small>bruto ${fmt(bruto)} · retención ${fmt(ret)}</small></div>`+
+  `<div class="kpi"><span>Ya pagado</span><b>${fmt(pag)}</b></div></div>`;
+ let tabla='';
+ if(f.agrupar){const gr=agruparFacturas(ver);
+  tabla=gr.length?`<div class="scroll"><table><thead><tr><th>RUT</th><th>Prestador</th><th class="n">Boletas</th><th class="n">Líquido</th><th class="n">Pagado</th><th class="n">Pendiente</th><th class="n">Vencido</th></tr></thead><tbody>`+
+   gr.map(g=>`<tr class="click" data-act="fx-ver" data-k="honorarios" data-rut="${esc(g.rut)}"><td class="c mono">${g.rut==='SINRUT'?'—':rutFmt(g.rut)}</td><td><b>${esc(g.razon||'—')}</b></td><td class="n">${g.n}</td><td class="n">${fz(g.total)}</td><td class="n">${fz(g.pagado)}</td><td class="n"><b>${fz(g.pend)}</b></td><td class="n">${g.vencido?`<b style="color:var(--bad)">${fz(g.vencido)}</b>`:''}</td></tr>`).join('')+
+   `<tr class="tot"><td colspan="3">Totales</td><td class="n">${fmt(total)}</td><td class="n">${fmt(pag)}</td><td class="n">${fmt(pend)}</td><td class="n">${fmt(vencido)}</td></tr></tbody></table></div>`
+  :`<div class="empty"><h3>Sin boletas que mostrar</h3><p>Revisa los filtros o apaga "Solo pendientes".</p></div>`;
+ }else{
+  const filas=ver.map(r=>`<tr><td class="c mono">${r.rut==='SINRUT'?'—':rutFmt(r.rut)}</td><td><b>${esc(r.razon||'—')}</b></td><td class="c">${esc(r.folio)}</td><td class="c">${fd(r.fecha)}</td><td class="c">${fd(r.vence)}${r.diasVenc>0?' <span class="pill bad">vencida</span>':''}</td><td class="n">${fz(r.bruto)}</td><td class="n">${fz(r.ret)}</td><td class="n">${fz(r.total)}</td><td class="n">${fz(r.pagado)}</td><td class="n"><b>${fz(r.pend)}</b></td><td class="n">${r.dias}</td></tr>`).join('');
+  tabla=filas?`<div class="scroll"><table><thead><tr><th>RUT</th><th>Prestador</th><th>N° boleta</th><th>Fecha</th><th>Vence</th><th class="n">Bruto</th><th class="n">Retención</th><th class="n">Líquido</th><th class="n">Pagado</th><th class="n">Pendiente</th><th class="n">Días</th></tr></thead><tbody>`+
+   filas+`<tr class="tot"><td colspan="5">Totales</td><td class="n">${fmt(bruto)}</td><td class="n">${fmt(ret)}</td><td class="n">${fmt(total)}</td><td class="n">${fmt(pag)}</td><td class="n">${fmt(pend)}</td><td></td></tr></tbody></table></div>`
+  :`<div class="empty"><h3>Sin boletas que mostrar</h3><p>Revisa los filtros o apaga "Solo pendientes".</p></div>`;
+ }
+ const sinAsiento=ver.filter(r=>!r.centralizada).length;
+ return kpis+`${sinAsiento?`<div class="note warn">${sinAsiento} boleta(s) sin asiento centralizado: aparecen con el líquido completo como pendiente.</div>`:''}`+`<div class="sheet">${tabla}</div>`;
+}
+function vHonPagar(){const e=emp();const titulo='Boletas de honorarios por pagar';
+ if(!e)return head(titulo,'')+noEmp();if(!ready())return loading();
+ const f=fxDe('honorarios');
+ const ctrl=`<label class="fl">Desde<input type="date" id="fx-desde" data-fx="desde" data-fk="honorarios" value="${esc(f.desde)}"></label>`+
+  `<label class="fl">Hasta<input type="date" id="fx-hasta" data-fx="hasta" data-fk="honorarios" value="${esc(f.hasta)}"></label>`+
+  `<input id="fx-q" data-fx="q" data-fk="honorarios" value="${esc(f.q)}" placeholder="RUT, prestador o N° de boleta" style="min-width:min(200px,100%)">`+
+  `<label class="fl">Vence<select id="fx-venc" data-fx="venc" data-fk="honorarios"><option value="todas"${f.venc==='todas'?' selected':''}>Todas</option><option value="vencidas"${f.venc==='vencidas'?' selected':''}>Vencidas</option><option value="porVencer"${f.venc==='porVencer'?' selected':''}>Por vencer</option></select></label>`+
+  `<label class="fl">Plazo<input class="num" id="fx-plazo" data-fx="plazo" data-fk="honorarios" value="${esc(String(f.plazo))}" inputmode="numeric" style="width:64px" title="Días de plazo para el vencimiento"></label>`+
+  `<label class="fl">Antigüedad<select id="fx-tramo" data-fx="tramo" data-fk="honorarios"><option value=""${f.tramo===''?' selected':''}>Todas</option>${FX_TRAMOS.map(x=>`<option value="${esc(x)}"${f.tramo===x?' selected':''}>${esc(x)}</option>`).join('')}</select></label>`+
+  `<button class="btn sm ${f.agrupar?'pri':''}" data-act="fx-agrupar" data-k="honorarios">${f.agrupar?'Por prestador':'Ver por prestador'}</button>`+
+  `<button class="btn sm ${f.todas?'':'pri'}" data-act="fx-todas" data-k="honorarios">${f.todas?'Viendo todas':'Solo pendientes'}</button>`+
+  `<button class="btn sm ghost" data-act="fx-limpiar" data-k="honorarios" title="Volver a los filtros del período">Limpiar</button>`+csvBtn('honPagar');
+ return head(titulo,'Solo boletas de honorarios · la deuda es el líquido (bruto menos retención) · los pagos se rebajan desde Cuentas corrientes, cuenta Honorarios por pagar',ctrl)+
+  `<div id="fx-res">${fxResHon()}</div>`;
 }

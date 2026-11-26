@@ -100,6 +100,11 @@ function exportPDF(w,id){const e=emp();if(!e)return;const R=rango();const per=pe
   const rows=list.map(h=>[fd(h.fecha),String(h.numero),rutFmt(h.rut),h.nombre,F(h.bruto),FZ(ret(h)),F(h.bruto-ret(h))]);
   rows.push({style:'tot',cells:['Totales','','','',F(sum(list,h=>h.bruto)),F(sum(list,ret)),F(sum(list,h=>h.bruto-ret(h)))]});
   rep={title:'Libro de honorarios',sub:`${per} · ${list.length} boletas`,land:1,cols:[{h:'Fecha',w:.9},{h:'N° boleta',w:1},{h:'RUT',w:1.1},{h:'Prestador',w:3.4},{h:'Bruto',w:1.2,align:'right'},{h:'Retención',w:1.2,align:'right'},{h:'Líquido',w:1.2,align:'right'}],rows}}
+ else if(w==='honPagar'){const {ver,plazo}=honsFiltradas();
+  const rows=ver.map(r=>[r.rut==='SINRUT'?'':rutFmt(r.rut),r.razon,String(r.folio),fd(r.fecha),fd(r.vence),F(r.bruto),FZ(r.ret),F(r.total),FZ(r.pagado),FZ(r.pend),String(r.dias)]);
+  rows.push({style:'tot',cells:['','Totales','','','',F(sum(ver,r=>r.bruto)),F(sum(ver,r=>r.ret)),F(sum(ver,r=>r.total)),F(sum(ver,r=>r.pagado)),F(sum(ver,r=>r.pend)),'']});
+  rep={title:'Boletas de honorarios por pagar',sub:`${per} · plazo ${plazo} días · la deuda es el líquido (bruto menos retención)`,land:1,
+   cols:[{h:'RUT',w:1.1},{h:'Prestador',w:3},{h:'N° boleta',w:.8},{h:'Fecha',w:.9},{h:'Vence',w:.9},{h:'Bruto',w:1.1,align:'right'},{h:'Retención',w:1.1,align:'right'},{h:'Líquido',w:1.1,align:'right'},{h:'Pagado',w:1.1,align:'right'},{h:'Pendiente',w:1.2,align:'right'},{h:'Días',w:.6,align:'right'}],rows}}
  if(!rep)return;const bytes=pdfReport(rep);const name=nombreFijo||(w==='liq'?`liquidacion_${(((S.remu[ymSel()]||{}).liqs||[]).find(x=>x.tid===id)||{}).rut||''}_${ymSel()}.pdf`:nomArchivo(rep.title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_')).replace(/\.csv$/,'.pdf'));
  return saveFile(name,bytes)}
 

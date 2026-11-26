@@ -3,7 +3,8 @@
 const esAux=c=>{const x=cm()[c];const k=claves();return !!(x&&(x.aux||c===k.clientes||c===k.proveedores))};
 const auxCtas=()=>plan().filter(c=>esAux(c.codigo));
 const esDeudora=c=>{const x=cm()[c];return !!x&&['AC','ANC'].includes(x.grupo)};
-function nombresRut(){const m={};for(const k of ['compras','ventas'])docsDe(k).forEach(d=>{if(d.rut&&d.razon)m[rutClean(d.rut)]=d.razon});return m}
+function nombresRut(){const m={};for(const k of ['compras','ventas'])docsDe(k).forEach(d=>{if(d.rut&&d.razon)m[rutClean(d.rut)]=d.razon});
+ for(const h of honDe()){const r=rutClean(h.rut);if(r&&h.nombre&&!m[r])m[r]=h.nombre}return m}
 function ctacte(cta,hasta){const deud=esDeudora(cta);const docMap={};for(const k of ['compras','ventas'])docsDe(k).forEach(d=>docMap[d.id]=d);const by={};
  for(const a of asientos()){if(a.fecha>hasta)break;if(a.origen&&a.origen.kind==='cierre')continue;(a.lineas||[]).forEach((l,i)=>{if(l.cuenta!==cta)return;const od=a.origen&&a.origen.docId?docMap[a.origen.docId]:null;
   const rut=rutClean(l.rut||(od&&od.rut))||'SINRUT';const ref=String(l.ref||(od&&od.folio)||'');const v=Math.round(deud?(+l.debe||0)-(+l.haber||0):(+l.haber||0)-(+l.debe||0));if(!v)return;
@@ -40,6 +41,28 @@ function facturasDe(kind,hasta,opciones){
  return out;
 }
 const dias=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+/* Boletas de honorarios por pagar: la deuda con el prestador es el líquido de cada boleta
+   (bruto menos retención) y se rebaja con los abonos a Honorarios por pagar del mismo RUT,
+   que se registran como pago en Cuentas corrientes. */
+function honorariosDe(hasta,opciones){
+ const plazo=Math.max(1,Math.round(+((opciones||{}).plazo)||30));
+ const cta=claves().honPagar;
+ const porRut={};ctacte(cta,hasta).forEach(g=>{porRut[g.rut]=g});
+ const refsContadas=new Set();Object.values(porRut).forEach(g=>(g.cargos||[]).forEach(c=>refsContadas.add(String(c.ref))));
+ const ref=hasta&&hasta>hoy()?hoy():hasta;
+ const out=[];
+ for(const h of honDe()){
+  const rut=rutClean(h.rut)||'SINRUT';const folio=String(h.numero==null?'':h.numero);
+  const g=porRut[rut];const cargo=g&&g.cargos?g.cargos.find(c=>String(c.ref)===folio):null;
+  if(!cargo&&refsContadas.has(folio))continue;
+  const bruto=Math.abs(Math.round(+h.bruto||0));const ret=h.retenida===false?0:Math.abs(Math.round(+h.ret||0));
+  const liq=bruto-ret;const pend=cargo?Math.max(0,Math.round(cargo.pend)):liq;
+  out.push({id:h.id,rut,razon:(h.nombre||'').trim(),tipo:'boleta',folio,fecha:h.fecha,
+   bruto,ret,total:liq,pagado:liq-pend,pend,dias:dias(h.fecha,ref),centralizada:!!cargo,
+   vence:masDias(h.fecha,plazo),diasVenc:dias(h.fecha,ref)-plazo});
+ }
+ return out;
+}
 /* Suma días a una fecha ISO (aaaa-mm-dd) y la devuelve igual. */
 const masDias=(f,n)=>{const d=new Date(String(f)+'T12:00:00');if(isNaN(d))return String(f||'');d.setDate(d.getDate()+Math.round(+n||0));return d.toISOString().slice(0,10)};
 function buckets(pend,hasta){const b=[0,0,0,0];for(const c of pend){const d=dias(c.fecha,hasta);b[d<=30?0:d<=60?1:d<=90?2:3]+=c.pend}return b}
